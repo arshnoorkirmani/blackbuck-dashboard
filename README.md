@@ -1,36 +1,60 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BlackBuck Operations Dashboard
 
-## Getting Started
+A modern, production-ready internal dashboard built for field agents to record fuel dispositions, track vehicle status, and access operations analytics seamlessly.
 
-First, run the development server:
+![Dashboard Preview](https://github.com/arshnoorkirmani/blackbuck-dashboard/assets/placeholder.png)
 
+## 🚀 Features
+
+- **Google Workspace Authentication:** Fully integrated `NextAuth v5` (Auth.js) secure sign-in with Google OAuth.
+- **Offline Data Syncing:** Form drafts are auto-saved to `localStorage` preventing accidental data loss during active field calls.
+- **Dynamic Zod Validation:** Complete end-to-end data safety using Zod and `react-hook-form` across complex conditional logic flows.
+- **Premium Design System:** Built with Tailwind CSS v4 and `shadcn/ui`. Includes fully accessible modals, unified color tokens, and smooth micro-interactions.
+- **Dark/Light Mode:** First-class support for `next-themes` offering an eye-strain-friendly dark layout for extended operation usage.
+
+## 🛠️ Tech Stack
+
+- **Framework:** [Next.js 15+](https://nextjs.org/) (App Router, Server Actions, React Server Components)
+- **Styling:** [Tailwind CSS v4](https://tailwindcss.com/) & [shadcn/ui](https://ui.shadcn.com/)
+- **State Management & Validation:** `react-hook-form` & `zod`
+- **Authentication:** `next-auth@beta` (Auth.js)
+- **Icons:** `lucide-react`
+- **Typography:** DM Sans, Syne, JetBrains Mono
+
+## 📦 Local Setup
+
+1. **Clone the repository:**
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/arshnoorkirmani/blackbuck-dashboard.git
+cd blackbuck-dashboard
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. **Install dependencies:**
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. **Environment Setup:**
+Create a `.env.local` file at the root of the project with the following credentials (required for Google Login):
+```env
+AUTH_SECRET="your-super-secret-key-for-nextauth"
+AUTH_GOOGLE_ID="your-client-id.apps.googleusercontent.com"
+AUTH_GOOGLE_SECRET="your-client-secret"
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. **Run the development server:**
+```bash
+npm run dev
+```
 
-## Learn More
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-To learn more about Next.js, take a look at the following resources:
+## 📁 Repository Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `app/`: Next.js App Router definitions, Page layouts, and API Routes (`api/auth`).
+- `components/`: Isolated React components, containing the `AppHeader`, forms, and `shadcn/ui` atomic elements.
+- `lib/services/`: Core business logic, mock DB integration, and local caching singletons (`disposition.service.ts`).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🛡️ License
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Private - For internal BlackBuck Operations usage.
