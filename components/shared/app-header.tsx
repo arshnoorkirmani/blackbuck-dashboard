@@ -16,7 +16,7 @@ export function AppHeader() {
   const handleLogin = async () => {
     setIsLoggingIn(true);
     try {
-      await signIn("google");
+      await signIn("google", { callbackUrl: window.location.href });
     } catch (err) {
       setIsLoggingIn(false);
     }

@@ -18,7 +18,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const handleLogin = async () => {
     setIsLoggingIn(true);
     try {
-      await signIn("google");
+      await signIn("google", { callbackUrl: window.location.href });
     } catch {
       setIsLoggingIn(false);
     }
