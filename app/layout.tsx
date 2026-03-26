@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SessionProvider } from "next-auth/react";
+import { StoreProvider } from "@/components/providers/store-provider";
+import { AuthGuard } from "@/components/providers/auth-guard";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,14 +24,18 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground transition-colors duration-300">
         <SessionProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            enableSystem
-            disableTransitionOnChange
-          >
-            {children}
-          </ThemeProvider>
+          <StoreProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="dark"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <AuthGuard>
+                {children}
+              </AuthGuard>
+            </ThemeProvider>
+          </StoreProvider>
         </SessionProvider>
       </body>
     </html>

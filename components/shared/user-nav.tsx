@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { LogOut, User, Loader2 } from "lucide-react";
+import { LogOut, User, Loader2, Settings } from "lucide-react";
 import Link from "next/link";
 
 export function UserNav({ user }: { user: { name?: string | null; email?: string | null; image?: string | null } }) {
@@ -48,6 +48,12 @@ export function UserNav({ user }: { user: { name?: string | null; email?: string
             <DropdownMenuItem className="cursor-pointer transition-colors focus:bg-primary/10 py-2">
               <User className="mr-2 h-4 w-4 text-primary" strokeWidth={2.5} />
               <span className="font-medium text-sm">My Profile</span>
+            </DropdownMenuItem>
+          </Link>
+          <Link href="/settings">
+            <DropdownMenuItem className="cursor-pointer transition-colors focus:bg-primary/10 py-2 mt-1">
+              <Settings className="mr-2 h-4 w-4 text-primary" strokeWidth={2.5} />
+              <span className="font-medium text-sm">Form Settings</span>
             </DropdownMenuItem>
           </Link>
         </DropdownMenuGroup>
