@@ -1,6 +1,7 @@
 import { z } from "zod";
+import { FormConfig, DEFAULT_CONFIG } from "./config.service";
 
-export const dispositionSchema = z.object({
+export const baseDispositionSchema = z.object({
   foNumber: z.string().min(1, "FO Number is required"),
   omc: z.string().min(1, "Target OMC is required"),
   noOfTrucks: z.string().optional(),
@@ -15,25 +16,39 @@ export const dispositionSchema = z.object({
   fuPlan: z.string().optional(),
   niReason: z.string().optional(),
   cbDate: z.string().optional(),
-}).superRefine((data, ctx) => {
-  if (data.callStatus === "Interested") {
-    if (!data.intSt) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Phase is required", path: ["intSt"] });
-    if (!data.nxtDate) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Date is required", path: ["nxtDate"] });
-    if (!data.plan) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Plan is required", path: ["plan"] });
-  }
-  if (data.callStatus === "Follow Up") {
-    if (!data.fuDate) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Date is required", path: ["fuDate"] });
-    if (!data.fuPlan) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Plan is required", path: ["fuPlan"] });
-  }
-  if (data.callStatus === "Not Interested" && !data.niReason) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Reason is required", path: ["niReason"] });
-  }
-  if (data.callStatus === "Call Back" && !data.cbDate) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Time is required", path: ["cbDate"] });
-  }
 });
 
-export type DispositionFormData = z.infer<typeof dispositionSchema>;
+export type DispositionFormData = z.infer<typeof baseDispositionSchema>;
+
+export const generateDispositionSchema = (config: FormConfig) => {
+  return baseDispositionSchema.superRefine((data, ctx) => {
+    // Dynamic Validation based on Settings
+    if (data.omc && !config.options.omcs.includes(data.omc)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid OMC selected", path: ["omc"] });
+    }
+    if (data.callStatus && !config.options.callStatuses.includes(data.callStatus)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Invalid Status selected", path: ["callStatus"] });
+    }
+
+    const actionSection = config.actionMapping?.[data.callStatus] || DEFAULT_CONFIG.actionMapping?.[data.callStatus] || "none";
+
+    if (actionSection === "interested") {
+      if (!data.intSt) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Phase is required", path: ["intSt"] });
+      if (!data.nxtDate) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Date is required", path: ["nxtDate"] });
+      if (!data.plan) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Plan is required", path: ["plan"] });
+    }
+    if (actionSection === "follow_up") {
+      if (!data.fuDate) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Date is required", path: ["fuDate"] });
+      if (!data.fuPlan) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Plan is required", path: ["fuPlan"] });
+    }
+    if (actionSection === "not_interested" && !data.niReason) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Reason is required", path: ["niReason"] });
+    }
+    if (actionSection === "call_back" && !data.cbDate) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Time is required", path: ["cbDate"] });
+    }
+  });
+};
 
 const DRAFT_KEY = "fuel_disposition_draft";
 const DB_KEY = "fuel_disposition_db";
@@ -70,36 +85,32 @@ export class DispositionService {
   }
 
   /**
-   * Submits the record. 
-   * In the future, replace the internal logic with a fetch() call to connect to a real DB.
-   * For now, it mocks an API delay and stores the final record in localStorage.
+   * Submits the record to MongoDB backend APIs.
+   * Caches form offline for incomplete sessions strictly separated. 
    */
-  static async submitRecord(data: DispositionFormData): Promise<{ success: boolean; id: string }> {
+  static async submitRecord(data: DispositionFormData): Promise<{ success: boolean; id?: string }> {
     // Format any blank fields as purely blank spaces (" ") before saving
     const processedData = Object.fromEntries(
       Object.entries(data).map(([key, val]) => [key, val === "" || val === undefined ? " " : val])
     ) as DispositionFormData;
 
-    // Simulate network delay for DB connection
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-
-    // Save to our "Mock DB" in localStorage
-    if (typeof window !== "undefined") {
-      const existing = localStorage.getItem(DB_KEY);
-      const records = existing ? JSON.parse(existing) : [];
-      const newRecord = {
-        id: `fd_${Date.now()}`,
-        createdAt: new Date().toISOString(),
-        ...processedData
-      };
-      records.push(newRecord);
-      localStorage.setItem(DB_KEY, JSON.stringify(records));
-      console.log("Mock DB saved record:", newRecord);
+    try {
+      const res = await fetch('/api/disposition', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(processedData)
+      });
+      
+      if (!res.ok) {
+        throw new Error("Failed to post disposition to the database.");
+      }
+      
+      const json = await res.json();
+      this.clearDraft(); // Clear local draft on valid success returns
+      return { success: true, id: json.id };
+    } catch (error) {
+      console.error("MongoDB POST transaction failed", error);
+      return { success: false };
     }
-
-    // Clear draft form data after successful sync
-    this.clearDraft();
-
-    return { success: true, id: `fd_${Date.now()}` };
   }
 }

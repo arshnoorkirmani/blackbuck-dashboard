@@ -2,7 +2,11 @@
 import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { dispositionSchema, DispositionFormData, DispositionService } from "@/lib/services/disposition.service";
+import { generateDispositionSchema, DispositionFormData, DispositionService } from "@/lib/services/disposition.service";
+import { FormConfig, DEFAULT_CONFIG } from "@/lib/services/config.service";
+import { useSession } from "next-auth/react";
+import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
+import { fetchConfig } from "@/lib/store/configSlice";
 import { AppHeader } from "@/components/shared/app-header";
 import { StepBadge } from "@/components/shared/step-badge";
 import { FormField } from "@/components/shared/form-field";
@@ -17,35 +21,17 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { CheckIcon, ChevronRightIcon, Loader2, CheckCircle2, CalendarIcon, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const OMCs = ["HPCL", "IOCL", "RIL", "Others"];
-
-const CALL_STATUSES = [
-  { label: "Interested", color: "#4ADE80", bg: "bg-emerald-100 dark:bg-emerald-900/40", border: "border-emerald-300 dark:border-emerald-500/30", text: "text-emerald-700 dark:text-emerald-400" },
-  { label: "Follow Up", color: "#60A5FA", bg: "bg-blue-100 dark:bg-blue-900/40", border: "border-blue-300 dark:border-blue-500/30", text: "text-blue-700 dark:text-blue-400" },
-  { label: "Not Interested", color: "#F87171", bg: "bg-red-100 dark:bg-red-900/40", border: "border-red-300 dark:border-red-500/30", text: "text-red-700 dark:text-red-400" },
-  { label: "Call Back", color: "#C084FC", bg: "bg-purple-100 dark:bg-purple-900/40", border: "border-purple-300 dark:border-purple-500/30", text: "text-purple-700 dark:text-purple-400" },
-  { label: "Call Disconnected", color: "#71717A", bg: "bg-zinc-100 dark:bg-zinc-800/60", border: "border-zinc-300 dark:border-zinc-500/30", text: "text-zinc-700 dark:text-zinc-400" },
-  { label: "Call Drop", color: "#71717A", bg: "bg-zinc-100 dark:bg-zinc-800/60", border: "border-zinc-300 dark:border-zinc-500/30", text: "text-zinc-700 dark:text-zinc-400" },
-  { label: "Not Connected", color: "#71717A", bg: "bg-zinc-100 dark:bg-zinc-800/60", border: "border-zinc-300 dark:border-zinc-500/30", text: "text-zinc-700 dark:text-zinc-400" },
-  { label: "Language Barrier", color: "#FCD34D", bg: "bg-amber-100 dark:bg-amber-900/40", border: "border-amber-300 dark:border-amber-500/30", text: "text-amber-700 dark:text-amber-400" },
-];
-
-const INTERESTED_STATUSES = [
-  "Will Recharge Later", "Card Not Activated", "Plan Sales - Waiting for Plan Activation",
-  "On Call Recharge Done", "Requesting for Field Executive to meet F2F",
-  "Plan Sales - HPCL - Waiting for Hotlist", "Will buy Fuel when finds a load",
-  "GPS Service Issue", "Transporter Fills Fuel, Will buy Fuel when gets Outside Load",
-  "FT Service Issue", "Plan Sales - IOCL - Waiting for Hotlist", "DND - Will do on his own",
-];
-const PLANS = ["Bonus", "Super Bonus", "Super Bonus Plus", "Monthly"];
-const NOT_INTERESTED_REASONS = [
-  "Plan Sales - Not Interested in Value Prop", "Transporter fills the Fuel",
-  "Do not Disturb (DND)", "FT Service Issue", "GPS Service Issue", "No Truck / Truck Sold",
-  "Education issue - Does not want/know online transactions",
-  "Already using Other Fuel Cards/Better Offers", "Wrong Commitment from FOS",
-  "Vehicle Runs in Local", "Less than 7.5 Ton / Filling Bio-Gas",
-  "Customer Wants only Physical Card", "Load Issue", "Card Not Activated",
-];
+const STATUS_DESIGN: Record<string, { color: string, bg: string, border: string, text: string }> = {
+  "Interested": { color: "#4ADE80", bg: "bg-emerald-100 dark:bg-emerald-900/40", border: "border-emerald-300 dark:border-emerald-500/30", text: "text-emerald-700 dark:text-emerald-400" },
+  "Follow Up": { color: "#60A5FA", bg: "bg-blue-100 dark:bg-blue-900/40", border: "border-blue-300 dark:border-blue-500/30", text: "text-blue-700 dark:text-blue-400" },
+  "Not Interested": { color: "#F87171", bg: "bg-red-100 dark:bg-red-900/40", border: "border-red-300 dark:border-red-500/30", text: "text-red-700 dark:text-red-400" },
+  "Call Back": { color: "#C084FC", bg: "bg-purple-100 dark:bg-purple-900/40", border: "border-purple-300 dark:border-purple-500/30", text: "text-purple-700 dark:text-purple-400" },
+  "Call Disconnected": { color: "#71717A", bg: "bg-zinc-100 dark:bg-zinc-800/60", border: "border-zinc-300 dark:border-zinc-500/30", text: "text-zinc-700 dark:text-zinc-400" },
+  "Call Drop": { color: "#71717A", bg: "bg-zinc-100 dark:bg-zinc-800/60", border: "border-zinc-300 dark:border-zinc-500/30", text: "text-zinc-700 dark:text-zinc-400" },
+  "Not Connected": { color: "#71717A", bg: "bg-zinc-100 dark:bg-zinc-800/60", border: "border-zinc-300 dark:border-zinc-500/30", text: "text-zinc-700 dark:text-zinc-400" },
+  "Language Barrier": { color: "#FCD34D", bg: "bg-amber-100 dark:bg-amber-900/40", border: "border-amber-300 dark:border-amber-500/30", text: "text-amber-700 dark:text-amber-400" },
+};
+const GENERIC_DESIGN = { color: "#71717A", bg: "bg-zinc-100 dark:bg-zinc-800/60", border: "border-zinc-300 dark:border-zinc-500/30", text: "text-zinc-700 dark:text-zinc-400" };
 
 const TIPS: Record<string, string> = {
   "Interested": "Ensure the plan pitched aligns with the customer's usage patterns and OMC preference.",
@@ -57,8 +43,6 @@ const TIPS: Record<string, string> = {
   "Not Connected": "Capture exact verbiage in remarks to help QA analysis.",
   "Language Barrier": "Note the language spoken to route future calls to appropriate agents.",
 };
-
-const SIMPLE_STATUSES = ["Call Disconnected", "Call Drop", "Not Connected", "Language Barrier"];
 
 function DatePicker({ value, onChange, label, error }: { value: string; onChange: (v: string) => void; label: string; error?: string }) {
   const [open, setOpen] = useState(false);
@@ -96,8 +80,40 @@ function DatePicker({ value, onChange, label, error }: { value: string; onChange
 }
 
 export default function FuelDispositionForm() {
+  const { data: session, status } = useSession();
+  const dispatch = useAppDispatch();
+  const { data: config, status: configStatus, lastFetchedEmail } = useAppSelector((state) => state.config);
+
+  useEffect(() => {
+    if (status !== "loading") {
+      const email = session?.user?.email || "anonymous";
+      // Fetch only if Redux cache is empty or if user account actively switched
+      if (configStatus === 'idle' || lastFetchedEmail !== email) {
+        dispatch(fetchConfig(email));
+      }
+    }
+  }, [session, status, dispatch, configStatus, lastFetchedEmail]);
+
+  return (
+    <div className="flex flex-col flex-1 w-full relative min-h-screen bg-background text-foreground font-sans">
+      <AppHeader />
+      
+      {configStatus === 'loading' || configStatus === 'idle' || status === 'loading' ? (
+        <div className="flex-1 flex items-center justify-center animate-in fade-in duration-500">
+          <Loader2 className="animate-spin text-muted-foreground size-6" />
+        </div>
+      ) : (
+        <FormContent config={config} />
+      )}
+    </div>
+  );
+}
+
+function FormContent({ config }: { config: FormConfig }) {
+  const schema = generateDispositionSchema(config);
+  
   const form = useForm<DispositionFormData>({
-    resolver: zodResolver(dispositionSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       foNumber: "", omc: "", noOfTrucks: "", fuelingPotential: "", fuelingFrequency: "",
       callStatus: "", remarks: "",
@@ -157,17 +173,60 @@ export default function FuelDispositionForm() {
     }
   };
 
-  const selectedSt = CALL_STATUSES.find(s => s.label === callStatus);
-  const isSimple = SIMPLE_STATUSES.includes(callStatus);
+  const selectedSt = STATUS_DESIGN[callStatus] || GENERIC_DESIGN;
+  const actionSection = config.actionMapping?.[callStatus] || DEFAULT_CONFIG.actionMapping?.[callStatus] || "none";
+  const isSimple = actionSection === "none" && callStatus !== "";
+  
+  const f_intSt = watch("intSt");
+  const f_nxtDate = watch("nxtDate");
+  const f_plan = watch("plan");
+  const f_fuDate = watch("fuDate");
+  const f_fuPlan = watch("fuPlan");
+  const f_niReason = watch("niReason");
+  const f_cbDate = watch("cbDate");
+
+  let actionRequired = 0;
+  let actionFilled = 0;
+  let actionChecklist: { label: string; done: boolean }[] = [];
+
+  if (actionSection === "interested") {
+    actionRequired = 3;
+    actionFilled = [f_intSt, f_nxtDate, f_plan].filter(Boolean).length;
+    actionChecklist = [
+      { label: "Phase selected", done: !!f_intSt },
+      { label: "Date picked", done: !!f_nxtDate },
+      { label: "Plan chosen", done: !!f_plan }
+    ];
+  } else if (actionSection === "follow_up") {
+    actionRequired = 2;
+    actionFilled = [f_fuDate, f_fuPlan].filter(Boolean).length;
+    actionChecklist = [
+      { label: "Follow-up date", done: !!f_fuDate },
+      { label: "Plan discussed", done: !!f_fuPlan }
+    ];
+  } else if (actionSection === "not_interested") {
+    actionRequired = 1;
+    actionFilled = [f_niReason].filter(Boolean).length;
+    actionChecklist = [
+      { label: "Reason provided", done: !!f_niReason }
+    ];
+  } else if (actionSection === "call_back") {
+    actionRequired = 1;
+    actionFilled = [f_cbDate].filter(Boolean).length;
+    actionChecklist = [
+      { label: "Call back time", done: !!f_cbDate }
+    ];
+  }
+
   const coreFields = [foNumber, omc, callStatus, remarks].filter(Boolean).length;
-  const progress = Math.round((coreFields / 4) * 100);
+  const totalRequired = 4 + actionRequired;
+  const progress = Math.round(((coreFields + actionFilled) / totalRequired) * 100);
+
+  const optionalFieldsCount = [config.visibleFields.noOfTrucks, config.visibleFields.fuelingPotential, config.visibleFields.fuelingFrequency].filter(Boolean).length;
 
   return (
-    <div className="flex flex-col flex-1 w-full relative min-h-screen bg-background text-foreground font-sans">
-      <AppHeader />
-
-      <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-[1fr_auto] flex-1 overflow-hidden h-[calc(100vh-58px)] w-full relative">
-
+    <>
+      <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-2 lg:grid-rows-[1fr_auto] flex-1 overflow-hidden h-[calc(100vh-58px)] w-full relative animate-in fade-in duration-300">
         {/* LEFT: form content */}
         <div className="col-start-1 row-start-1 overflow-y-auto px-6 py-6 md:pl-10 md:pr-12 md:py-6 border-r border-border">
           <h1 className="font-heading text-2xl md:text-3xl font-bold text-foreground tracking-normal mb-1">
@@ -205,7 +264,7 @@ export default function FuelDispositionForm() {
 
               <FormField label="Target OMC" required>
                 <div className="grid grid-cols-4 gap-1.5">
-                  {OMCs.map(o => (
+                  {config.options.omcs.map(o => (
                     <label key={o} className="cursor-pointer">
                       <input
                         type="radio"
@@ -229,30 +288,42 @@ export default function FuelDispositionForm() {
               </FormField>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 mb-5">
-              <FormField label="No of Trucks" className="col-span-1">
-                <Input placeholder="Your answer" {...form.register("noOfTrucks")} />
-              </FormField>
-              <FormField label="Fueling Potential" className="col-span-1">
-                <Input placeholder="Your answer" {...form.register("fuelingPotential")} />
-              </FormField>
-              <FormField label="Fueling Frequency" className="col-span-1">
-                <Input placeholder="Your answer" {...form.register("fuelingFrequency")} />
-              </FormField>
-            </div>
+            {optionalFieldsCount > 0 && (
+              <div className={cn("grid grid-cols-1 gap-3 mb-5",
+                optionalFieldsCount === 3 ? "md:grid-cols-3" :
+                optionalFieldsCount === 2 ? "md:grid-cols-2" : "md:grid-cols-1"
+              )}>
+                {config.visibleFields.noOfTrucks && (
+                  <FormField label="No of Trucks" className="col-span-1">
+                    <Input placeholder="Your answer" {...form.register("noOfTrucks")} />
+                  </FormField>
+                )}
+                {config.visibleFields.fuelingPotential && (
+                  <FormField label="Fueling Potential" className="col-span-1">
+                    <Input placeholder="Your answer" {...form.register("fuelingPotential")} />
+                  </FormField>
+                )}
+                {config.visibleFields.fuelingFrequency && (
+                  <FormField label="Fueling Frequency" className="col-span-1">
+                    <Input placeholder="Your answer" {...form.register("fuelingFrequency")} />
+                  </FormField>
+                )}
+              </div>
+            )}
 
             <FormField label="Primary Call Outcome" required>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {CALL_STATUSES.map(s => {
-                  const active = callStatus === s.label;
+                {config.options.callStatuses.map(sLabel => {
+                  const active = callStatus === sLabel;
+                  const s = STATUS_DESIGN[sLabel] || GENERIC_DESIGN;
                   return (
-                    <label key={s.label} className="cursor-pointer">
+                    <label key={sLabel} className="cursor-pointer">
                       <input
                         type="radio"
                         name="callStatus"
-                        value={s.label}
+                        value={sLabel}
                         checked={active}
-                        onChange={() => setStatus(s.label)}
+                        onChange={() => setStatus(sLabel)}
                         className="peer sr-only"
                       />
                       <div className={cn(
@@ -269,7 +340,7 @@ export default function FuelDispositionForm() {
                             boxShadow: active ? `0 0 8px ${s.color}60` : "none"
                           }}
                         />
-                        <span className={active ? s.text : ""}>{s.label}</span>
+                        <span className={active ? s.text : ""}>{sLabel}</span>
                       </div>
                     </label>
                   );
@@ -313,13 +384,20 @@ export default function FuelDispositionForm() {
           ) : (
             <div key={callStatus} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
 
-              <div className="flex items-center gap-3 mb-5">
-                <div className="flex size-7 items-center justify-center rounded-md border border-primary/20 bg-primary/10 font-mono text-[11px] font-medium text-primary">
+              <div className="flex items-baseline gap-3 mb-5">
+                <div className="flex size-7 mt-0.5 items-center justify-center rounded-md border border-primary/20 bg-primary/10 font-mono text-[11px] font-medium text-primary">
                   02
                 </div>
-                <span className="font-heading text-[15px] font-bold text-foreground tracking-tight">
-                  {callStatus}
-                </span>
+                <div className="flex flex-col">
+                  <span className="font-heading text-[15px] font-bold text-foreground tracking-tight">
+                    {callStatus}
+                  </span>
+                  {actionSection !== "none" && (
+                    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                      {actionSection === "interested" ? "Interested Flow" : actionSection === "follow_up" ? "Follow Up Flow" : actionSection === "not_interested" ? "Rejection Flow" : actionSection === "call_back" ? "Callback Flow" : "Standard Flow"}
+                    </span>
+                  )}
+                </div>
                 {selectedSt && (
                   <span
                     className={cn(
@@ -333,13 +411,13 @@ export default function FuelDispositionForm() {
               </div>
 
               {/* Interested */}
-              {callStatus === "Interested" && (
+              {actionSection === "interested" && (
                 <div className="space-y-4">
                   <FormField label="Interested Phase / State" required>
                     <Select value={watch("intSt")} onValueChange={v => setValue("intSt", v, { shouldValidate: true })}>
                       <SelectTrigger className={errors.intSt ? "border-destructive ring-destructive" : ""}><SelectValue placeholder="Select exact status" /></SelectTrigger>
                       <SelectContent>
-                        {INTERESTED_STATUSES.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                        {config.options.interestedStatuses.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                       </SelectContent>
                     </Select>
                     {errors.intSt && <p className="text-[10.5px] font-medium text-destructive mt-1.5 flex items-center gap-1"><AlertCircle className="size-3" /> {errors.intSt.message}</p>}
@@ -352,7 +430,7 @@ export default function FuelDispositionForm() {
                       <Select value={watch("plan")} onValueChange={v => setValue("plan", v, { shouldValidate: true })}>
                         <SelectTrigger className={errors.plan ? "border-destructive ring-destructive" : ""}><SelectValue placeholder="Select Plan" /></SelectTrigger>
                         <SelectContent>
-                          {PLANS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                          {config.options.plans.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                         </SelectContent>
                       </Select>
                       {errors.plan && <p className="text-[10.5px] font-medium text-destructive mt-1.5 flex items-center gap-1"><AlertCircle className="size-3" /> {errors.plan.message}</p>}
@@ -362,7 +440,7 @@ export default function FuelDispositionForm() {
               )}
 
               {/* Follow Up */}
-              {callStatus === "Follow Up" && (
+              {actionSection === "follow_up" && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField label="Scheduled Follow Up" required>
                     <DatePicker value={watch("fuDate") || ""} onChange={v => setValue("fuDate", v, { shouldValidate: true })} label="date" error={errors.fuDate?.message} />
@@ -371,7 +449,7 @@ export default function FuelDispositionForm() {
                     <Select value={watch("fuPlan")} onValueChange={v => setValue("fuPlan", v, { shouldValidate: true })}>
                       <SelectTrigger className={errors.fuPlan ? "border-destructive ring-destructive" : ""}><SelectValue placeholder="Select Plan" /></SelectTrigger>
                       <SelectContent>
-                        {PLANS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                        {config.options.plans.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                       </SelectContent>
                     </Select>
                     {errors.fuPlan && <p className="text-[10.5px] font-medium text-destructive mt-1.5 flex items-center gap-1"><AlertCircle className="size-3" /> {errors.fuPlan.message}</p>}
@@ -380,12 +458,12 @@ export default function FuelDispositionForm() {
               )}
 
               {/* Not Interested */}
-              {callStatus === "Not Interested" && (
+              {actionSection === "not_interested" && (
                 <FormField label="Reason for Rejection" required>
                   <Select value={watch("niReason")} onValueChange={v => setValue("niReason", v, { shouldValidate: true })}>
                     <SelectTrigger className={errors.niReason ? "border-destructive ring-destructive" : ""}><SelectValue placeholder="Identify the core reason" /></SelectTrigger>
                     <SelectContent>
-                      {NOT_INTERESTED_REASONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                      {config.options.notInterestedReasons.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   {errors.niReason && <p className="text-[10.5px] font-medium text-destructive mt-1.5 flex items-center gap-1"><AlertCircle className="size-3" /> {errors.niReason.message}</p>}
@@ -393,7 +471,7 @@ export default function FuelDispositionForm() {
               )}
 
               {/* Call Back */}
-              {callStatus === "Call Back" && (
+              {actionSection === "call_back" && (
                 <FormField label="Customer Requested Time" required>
                   <DatePicker value={watch("cbDate") || ""} onChange={v => setValue("cbDate", v, { shouldValidate: true })} label="time" error={errors.cbDate?.message} />
                 </FormField>
@@ -420,7 +498,11 @@ export default function FuelDispositionForm() {
                   <div className="size-1.5 rounded-full bg-amber-500 animate-pulse" /> Field tip
                 </div>
                 <div className="text-[12px] font-medium text-amber-900/80 dark:text-amber-200/80 leading-relaxed">
-                  {TIPS[callStatus]}
+                  {actionSection === "interested" ? "Ensure the plan pitched aligns with the customer's usage patterns and OMC preference." :
+                   actionSection === "follow_up" ? "Set follow-up date within 3 working days for best conversion rates." :
+                   actionSection === "not_interested" ? "Accurate rejection reasons improve targeting for future outreach campaigns." :
+                   actionSection === "call_back" ? "Respect the customer's preferred callback window to improve answer rates." : 
+                   "Please ensure accurate logging methodology and maintain objective disposition context."}
                 </div>
               </div>
 
@@ -435,8 +517,9 @@ export default function FuelDispositionForm() {
                     { label: "OMC selected", done: !!omc },
                     { label: "Call status chosen", done: !!callStatus },
                     { label: "Remarks filled", done: !!remarks },
-                  ].map(item => (
-                    <div key={item.label} className="flex items-center gap-3.5">
+                    ...actionChecklist
+                  ].map((item, idx) => (
+                    <div key={`${item.label}-${idx}`} className="flex items-center gap-3.5">
                       <div
                         className={cn(
                           "flex size-5 items-center justify-center rounded-md border shrink-0 transition-all duration-300",
@@ -534,6 +617,6 @@ export default function FuelDispositionForm() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
