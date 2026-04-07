@@ -1,0 +1,453 @@
+{
+    "page": "dashboard",
+    "role": "AGENT",
+    "configUsed": {},
+    "agent": {
+        "empId": "GU7954",
+        "email": "arshnoor.kirmani@blackbuck.com",
+        "tlName": "Darshan B Y",
+        "doj": "2026-02-19",
+        "tenure": "M0 Old",
+        "grade": "G1",
+        "status": "Active",
+        "location": "",
+        "saleCode": "",
+        "performance": {
+            "presentDays": 0,
+            "wfhAttendance": 0,
+            "attPercent": "-",
+            "talktime": "-",
+            "quality": "-",
+            "completedCalls": "-",
+            "planSaleTarget": 12,
+            "bonus": 0,
+            "superBonus": 0,
+            "superBonusPlus": 0,
+            "monthlyPlanSold": 0,
+            "totalSold": 0,
+            "salePointAch": 0,
+            "totalSalePoint": 0,
+            "achPercent": "0.0%",
+            "slab": 0,
+            "incentivesEarned": 0,
+            "funnel5k": "-",
+            "converted10k": 0,
+            "ach10kPercent": "0.0%",
+            "payoutFactor": 0,
+            "finalPayout": 0,
+            "rank": 145,
+            "eligibility": "Not Eligible"
+        },
+        "incentive": {
+            "location": "Bangalore",
+            "rank": 145,
+            "eligibility": "Not Eligible",
+            "vintage": "undefined",
+            "target": 0,
+            "totalSold": 0,
+            "salesPoints": 0,
+            "achPercent": "0.0%",
+            "slab": 0,
+            "incentiveAt50_59": 0,
+            "incentiveAt60_69": 0,
+            "incentiveAt70_85": 0,
+            "incentiveAtAbove85": 0,
+            "totalIncentive": 0,
+            "payoutFactor": 0,
+            "finalPayout": 0
+        },
+        "appraisal": {
+            "oldEmpId": "GU7954",
+            "name": "arshnoor.kirmani@blackbuck.com",
+            "personalPhone": "Darshan B Y",
+            "personalEmail": "19-Feb-26",
+            "newEmpId": "Bangalore"
+        },
+        "customers": {
+            "all": [],
+            "above10k": [],
+            "above50k": [],
+            "summary": {
+                "total": 0,
+                "above10kCount": 0,
+                "above50kCount": 0
+            }
+        },
+        "salesSummary": {
+            "today": {
+                "salesCount": 0,
+                "salesPoints": 0,
+                "totalAmount": 0,
+                "customers10k": 0,
+                "customers50k": 0,
+                "transactions": []
+            },
+            "yesterday": {
+                "salesCount": 0,
+                "salesPoints": 0,
+                "totalAmount": 0,
+                "customers10k": 0,
+                "customers50k": 0,
+                "transactions": []
+            },
+            "thisWeek": {
+                "salesCount": 0,
+                "salesPoints": 0,
+                "totalAmount": 0,
+                "customers10k": 0,
+                "customers50k": 0,
+                "transactions": []
+            },
+            "lastWeek": {
+                "salesCount": 0,
+                "salesPoints": 0,
+                "totalAmount": 0,
+                "customers10k": 0,
+                "customers50k": 0,
+                "transactions": []
+            },
+            "thisMonth": {
+                "salesCount": 0,
+                "salesPoints": 0,
+                "totalAmount": 0,
+                "customers10k": 0,
+                "customers50k": 0,
+                "transactions": []
+            },
+            "lastMonth": {
+                "salesCount": 0,
+                "salesPoints": 0,
+                "totalAmount": 0,
+                "customers10k": 0,
+                "customers50k": 0,
+                "transactions": []
+            },
+            "allTime": {
+                "salesCount": 0,
+                "salesPoints": 0,
+                "totalAmount": 0,
+                "customers10k": 0,
+                "customers50k": 0,
+                "transactions": []
+            }
+        },
+        "drr": {
+            "target": 12,
+            "totalAchievedPoints": 0,
+            "remainingTarget": 12,
+            "remainingDays": 22,
+            "drr": 1,
+            "isOnTrack": true
+        },
+        "filterTags": {
+            "status": "Active",
+            "location": "",
+            "grade": "G1",
+            "tlName": "Darshan B Y",
+            "eligibility": "Not Eligible",
+            "vintage": "M0 Old",
+            "achBucket": "Below 50%",
+            "payoutBucket": "None",
+            "converted10kBucket": "0",
+            "planTypes": [],
+            "soldToday": false,
+            "soldYesterday": false,
+            "soldThisWeek": false,
+            "soldThisMonth": false
+        },
+        "searchIndex": "gu7954 arshnoor.kirmani@blackbuck.com darshan b y  g1  arshnoor.kirmani@blackbuck.com gu7954",
+        "performanceScore": {
+            "salesScore": 0,
+            "payoutScore": 0,
+            "overall": 0
+        },
+        "activeDates": {
+            "firstSaleDate": null,
+            "lastSaleDate": null,
+            "totalActiveDays": 0,
+            "saleDates": []
+        },
+        "targetGap": {
+            "target": 12,
+            "achieved": 0,
+            "remaining": 12,
+            "percentDone": 0,
+            "daysLeft": 22,
+            "neededPerDay": 1,
+            "isAchievable": true
+        },
+        "alerts": [
+            {
+                "type": "low_performance",
+                "message": "Achievement below 50%",
+                "severity": "critical"
+            },
+            {
+                "type": "not_eligible",
+                "message": "Not eligible for payout",
+                "severity": "warning"
+            },
+            {
+                "type": "no_sale_week",
+                "message": "No sale this week",
+                "severity": "warning"
+            }
+        ],
+        "trend": {
+            "direction": "stable",
+            "weeklyGrowth": "N/A",
+            "isImproving": true
+        }
+    },
+    "team": {
+        "tlName": "Darshan B Y",
+        "rank": 11,
+        "performance": {
+            "rank": 11,
+            "avgTalktime": "-",
+            "avgCompletedCalls": "-",
+            "avgQuality": "-",
+            "planSaleTarget": 378,
+            "bonus": 0,
+            "superBonus": 0,
+            "superBonusPlus": 19,
+            "monthlyPlanSold": 0,
+            "totalSold": 19,
+            "salePointAch": 44,
+            "totalSalePoint": 44,
+            "achPercent": "11.64%",
+            "funnel5k": 0,
+            "converted10k": 2,
+            "ach10kPercent": "10.5%",
+            "required": 334,
+            "drr": 167
+        },
+        "totals": {
+            "agentCount": 15,
+            "activeCount": 14,
+            "inactiveCount": 1,
+            "totalTarget": 423,
+            "totalSold": 19,
+            "totalSalePoints": 44,
+            "totalIncentive": 0,
+            "totalFinalPayout": 0,
+            "totalConverted10k": 2,
+            "totalFunnel5k": 0,
+            "totalAbove50k": 4
+        },
+        "salesSummary": {
+            "today": {
+                "salesCount": 0,
+                "totalAmount": 0,
+                "customers10k": 0,
+                "customers50k": 0
+            },
+            "yesterday": {
+                "salesCount": 2,
+                "totalAmount": 5998,
+                "customers10k": 1,
+                "customers50k": 0
+            },
+            "thisWeek": {
+                "salesCount": 2,
+                "totalAmount": 5998,
+                "customers10k": 1,
+                "customers50k": 0
+            },
+            "lastWeek": {
+                "salesCount": 0,
+                "totalAmount": 0,
+                "customers10k": 0,
+                "customers50k": 0
+            },
+            "thisMonth": {
+                "salesCount": 2,
+                "totalAmount": 5998,
+                "customers10k": 1,
+                "customers50k": 0
+            },
+            "lastMonth": {
+                "salesCount": 5,
+                "totalAmount": 20995,
+                "customers10k": 0,
+                "customers50k": 0
+            },
+            "allTime": {
+                "salesCount": 33,
+                "totalAmount": 110967,
+                "customers10k": 2,
+                "customers50k": 4
+            }
+        },
+        "leaderboard": [
+            {
+                "rank": 1,
+                "empId": "ZC5407",
+                "email": "asmat.alimohdkumar@blackbuck.com",
+                "saleCode": "",
+                "totalSold": 3,
+                "achPercent": "17.4%",
+                "converted10k": 0,
+                "finalPayout": 0,
+                "eligibility": "Not Eligible"
+            },
+            {
+                "rank": 2,
+                "empId": "ZC19015",
+                "email": "ashishranjan.jha@blackbuck.com",
+                "saleCode": "",
+                "totalSold": 3,
+                "achPercent": "21.9%",
+                "converted10k": 1,
+                "finalPayout": 0,
+                "eligibility": "Not Eligible"
+            },
+            {
+                "rank": 3,
+                "empId": "ZC19020",
+                "email": "pmohan.patro@blackbuck.com",
+                "saleCode": "",
+                "totalSold": 3,
+                "achPercent": "21.9%",
+                "converted10k": 0,
+                "finalPayout": 0,
+                "eligibility": "Not Eligible"
+            },
+            {
+                "rank": 4,
+                "empId": "GU5122",
+                "email": "zuniya.taj@blackbuck.com",
+                "saleCode": "",
+                "totalSold": 3,
+                "achPercent": "25.0%",
+                "converted10k": 0,
+                "finalPayout": 0,
+                "eligibility": "Not Eligible"
+            },
+            {
+                "rank": 5,
+                "empId": "ZC17077",
+                "email": "ankita.kuri@blackbuck.com",
+                "saleCode": "",
+                "totalSold": 2,
+                "achPercent": "9.3%",
+                "converted10k": 1,
+                "finalPayout": 0,
+                "eligibility": "Not Eligible"
+            },
+            {
+                "rank": 6,
+                "empId": "GU1168",
+                "email": "sunilkumar.jena@blackbuck.com",
+                "saleCode": "",
+                "totalSold": 2,
+                "achPercent": "12.5%",
+                "converted10k": 0,
+                "finalPayout": 0,
+                "eligibility": "Not Eligible"
+            },
+            {
+                "rank": 7,
+                "empId": "GU3854",
+                "email": "satyaban.parida@blackbuck.com",
+                "saleCode": "",
+                "totalSold": 1,
+                "achPercent": "6.3%",
+                "converted10k": 0,
+                "finalPayout": 0,
+                "eligibility": "Not Eligible"
+            },
+            {
+                "rank": 8,
+                "empId": "GU6433",
+                "email": "ahbab.a@blackbuck.com",
+                "saleCode": "",
+                "totalSold": 1,
+                "achPercent": "8.3%",
+                "converted10k": 0,
+                "finalPayout": 0,
+                "eligibility": "Not Eligible"
+            },
+            {
+                "rank": 9,
+                "empId": "GU8483",
+                "email": "priyadarshini.n@blackbuck.com",
+                "saleCode": "",
+                "totalSold": 1,
+                "achPercent": "40.0%",
+                "converted10k": 0,
+                "finalPayout": 0,
+                "eligibility": "Not Eligible"
+            },
+            {
+                "rank": 10,
+                "empId": "GU2886",
+                "email": "pintu.pradhan@blackbuck.com",
+                "saleCode": "",
+                "totalSold": 0,
+                "achPercent": "0.0%",
+                "converted10k": 0,
+                "finalPayout": 0,
+                "eligibility": "Not Eligible"
+            },
+            {
+                "rank": 11,
+                "empId": "ZC19017",
+                "email": "afreen.s@blackbuck.com",
+                "saleCode": "",
+                "totalSold": 0,
+                "achPercent": "0.0%",
+                "converted10k": 0,
+                "finalPayout": 0,
+                "eligibility": "Not Eligible"
+            },
+            {
+                "rank": 12,
+                "empId": "GU3850",
+                "email": "m.sreelekshmi@blackbuck.com",
+                "saleCode": "",
+                "totalSold": 0,
+                "achPercent": "0.0%",
+                "converted10k": 0,
+                "finalPayout": 0,
+                "eligibility": "Not Eligible"
+            },
+            {
+                "rank": 13,
+                "empId": "GU7004",
+                "email": "itikanta.mahalik@blackbuck.com",
+                "saleCode": "",
+                "totalSold": 0,
+                "achPercent": "0.0%",
+                "converted10k": 0,
+                "finalPayout": 0,
+                "eligibility": "Not Eligible"
+            },
+            {
+                "rank": 14,
+                "empId": "GU7954",
+                "email": "arshnoor.kirmani@blackbuck.com",
+                "saleCode": "",
+                "totalSold": 0,
+                "achPercent": "0.0%",
+                "converted10k": 0,
+                "finalPayout": 0,
+                "eligibility": "Not Eligible"
+            },
+            {
+                "rank": 15,
+                "empId": "GU8487",
+                "email": "nabarun.rout@blackbuck.com",
+                "saleCode": "",
+                "totalSold": 0,
+                "achPercent": "0.0%",
+                "converted10k": 0,
+                "finalPayout": 0,
+                "eligibility": "Not Eligible"
+            }
+        ]
+    },
+    "meta": {
+        "fetchedAt": "2026-04-05T12:45:36.905Z"
+    }
+}

@@ -1,0 +1,23 @@
+{
+  "sheetUrl": "",
+  "tabs": {
+    "agent": "Agent level - Plan Sale",
+    "tl": "Team lead level",
+    "rawSales": "Dump- Plan Sale",
+    "teleSales": "Tele - Plan Sold(10k)",
+    "incentive": "Calculation",
+    "appraisal": "Appraisal Tracker",
+    "incentiveStructure": "Incentive Structure",
+    "employeeInfo": "Overall HC Dec'25"
+  },
+  "planPoints": {
+    "BONUS": 1,
+    "SUPER_BONUS": 2,
+    "SUPER_BONUS_PLUS": 3
+  },
+  "planPrices": {
+    "BONUS": 2999,
+    "SUPER_BONUS": 2999,
+    "SUPER_BONUS_PLUS": 4999
+  }
+}

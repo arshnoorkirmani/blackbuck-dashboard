@@ -1,3 +1,10 @@
+import type { DashboardConfig } from "@/lib/types/dashboard";
+import { DEFAULT_DASHBOARD_CONFIG } from "@/lib/types/dashboard";
+
+export type { DashboardConfig };
+
+// ─── Form Config ──────────────────────────────────────────────────────────────
+
 export type FormConfig = {
   visibleFields: {
     noOfTrucks: boolean;
@@ -23,7 +30,7 @@ export const DEFAULT_CONFIG: FormConfig = {
   options: {
     omcs: ["HPCL", "IOCL", "RIL", "Others"],
     callStatuses: [
-      "Interested", "Follow Up", "Not Interested", "Call Back", 
+      "Interested", "Follow Up", "Not Interested", "Call Back",
       "Call Disconnected", "Call Drop", "Not Connected", "Language Barrier"
     ],
     interestedStatuses: [
@@ -51,11 +58,12 @@ export const DEFAULT_CONFIG: FormConfig = {
   }
 };
 
+// ─── Config Service ───────────────────────────────────────────────────────────
+
 export const ConfigService = {
-  /**
-   * Fetches the user's specific form configuration directly from MongoDB Atlas via API route.
-   */
-  getUserConfig: async (email: string): Promise<FormConfig> => {
+  // ── Form Config ─────────────────────────────────────────────────────────────
+
+  getUserConfig: async (_email: string): Promise<FormConfig> => {
     try {
       const res = await fetch('/api/config', { cache: 'no-store' });
       if (res.ok) {
@@ -67,11 +75,8 @@ export const ConfigService = {
     }
     return DEFAULT_CONFIG;
   },
-  
-  /**
-   * Persists the user's customized structure safely to the MongoDB collection route.
-   */
-  saveUserConfig: async (email: string, config: FormConfig): Promise<boolean> => {
+
+  saveUserConfig: async (_email: string, config: FormConfig): Promise<boolean> => {
     try {
       const res = await fetch('/api/config', {
         method: 'POST',
@@ -79,9 +84,38 @@ export const ConfigService = {
         body: JSON.stringify({ config })
       });
       return res.ok;
-    } catch(e) {
+    } catch (e) {
       console.error("Failed to save user config to database", e);
     }
     return false;
-  }
+  },
+
+  // ── Dashboard Config ─────────────────────────────────────────────────────────
+
+  getDashboardConfig: async (): Promise<DashboardConfig> => {
+    try {
+      const res = await fetch('/api/config?type=dashboard', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.dashboardConfig) return data.dashboardConfig as DashboardConfig;
+      }
+    } catch (e) {
+      console.error("Failed to load dashboard config from MongoDB", e);
+    }
+    return DEFAULT_DASHBOARD_CONFIG;
+  },
+
+  saveDashboardConfig: async (config: DashboardConfig): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'dashboard', dashboardConfig: config })
+      });
+      return res.ok;
+    } catch (e) {
+      console.error("Failed to save dashboard config to database", e);
+    }
+    return false;
+  },
 };

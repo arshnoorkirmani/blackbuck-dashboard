@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/shared/app-header";
 import Image from "next/image";

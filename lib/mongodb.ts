@@ -1,17 +1,26 @@
 import mongoose from 'mongoose';
+import { env } from "@/lib/env";
 
-const MONGODB_URI = process.env.MONGODB_URI;
+/**
+ * PRODUCTION-READY MONGOOSE CONNECTION CONTEXT
+ * Implements connection pooling and caching for serverless environments.
+ */
 
-if (!MONGODB_URI) {
-  console.warn('⚠️ MONGODB_URI is not defined in the environment variables (like .env.local). Database connections will fail.');
+interface MongooseCache {
+  conn: mongoose.Connection | null;
+  promise: Promise<typeof mongoose> | null;
 }
 
-// Global caching for Next.js serverless functions
-// This prevents exhausting database connections in development during HMR
-let cached = (global as any).mongoose;
+// ── Define Global Type for Global ───────────────────────────────────────────
+declare global {
+  // eslint-disable-next-line no-var
+  var mongoose: MongooseCache | undefined;
+}
 
-if (!cached) {
-  cached = (global as any).mongoose = { conn: null, promise: null };
+let cached: MongooseCache = global.mongoose || { conn: null, promise: null };
+
+if (!global.mongoose) {
+  global.mongoose = cached;
 }
 
 async function dbConnect() {
@@ -19,23 +28,21 @@ async function dbConnect() {
     return cached.conn;
   }
 
-  if (!MONGODB_URI) {
-    throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
-  }
+  const MONGODB_URI = env.mongodbUri;
 
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      console.log("✅ Successfully connected to MongoDB Database.");
-      return mongoose;
+    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongooseInstance) => {
+      console.log("✅ Successfully connected to MongoDB Database Cluster.");
+      return mongooseInstance;
     });
   }
   
   try {
-    cached.conn = await cached.promise;
+    cached.conn = (await cached.promise).connection;
   } catch (e) {
     cached.promise = null;
     throw e;

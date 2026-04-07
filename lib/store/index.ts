@@ -1,9 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
 import configReducer from './configSlice';
+import dashboardReducer from './dashboardSlice';
 
 export const store = configureStore({
   reducer: {
     config: configReducer,
+    dashboard: dashboardReducer,
   },
 });
 
