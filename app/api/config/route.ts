@@ -14,6 +14,9 @@ export async function GET(req: Request) {
 
   try {
     const session = await auth();
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     if (type === 'dashboard') {
       // Dashboard config is global (not per-user) — stored on a sentinel document
@@ -24,10 +27,6 @@ export async function GET(req: Request) {
     }
 
     // Default: form config (per-user)
-    if (!session?.user?.email) {
-      return NextResponse.json({ config: DEFAULT_CONFIG }, { status: 200 });
-    }
-
     await dbConnect();
     const record = await UserConfig.findOne({ email: session.user.email });
 
@@ -38,9 +37,9 @@ export async function GET(req: Request) {
   } catch (error: unknown) {
     console.error("Config GET Error:", error);
     if (type === 'dashboard') {
-      return NextResponse.json({ dashboardConfig: DEFAULT_DASHBOARD_CONFIG }, { status: 200 });
+      return NextResponse.json({ error: 'Failed to load dashboard config' }, { status: 500 });
     }
-    return NextResponse.json({ config: DEFAULT_CONFIG }, { status: 200 });
+    return NextResponse.json({ error: 'Failed to load config' }, { status: 500 });
   }
 }
 
@@ -56,7 +55,7 @@ export async function POST(req: Request) {
 
     if (body.type === 'dashboard') {
       // Role guard: Only admins can modify the global dashboard configuration
-      if (session.role !== 'ADMIN') {
+      if (session.role !== 'ADMIN' && session.role !== 'SUPER_ADMIN') {
         return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
       }
 

@@ -11,6 +11,7 @@ import { parseSalesSheet } from "@/lib/parsers/parseSalesSheet";
 import { parseIncentiveSheet } from "@/lib/parsers/parseIncentiveSheet";
 import { parseAppraisalSheet, resolveTLNames } from "@/lib/parsers/parseAppraisalSheet";
 import { buildDashboardData } from "@/lib/aggregators/buildDashboardData";
+import { resolveUserRole } from "@/lib/auth/resolveUserRole";
 
 import type { UserRole, DashboardConfig, AgentRow, DashboardMainData } from "@/lib/types/dashboard";
 
@@ -32,7 +33,7 @@ export async function GET() {
     }
 
     const userEmail = session.user?.email?.toLowerCase() ?? "";
-    const role: UserRole = (session.role as UserRole) ?? "AGENT";
+    const sessionRole: UserRole = (session.role as UserRole) ?? "AGENT";
 
     await dbConnect();
     const configRecord = await UserConfig.findOne({ email: "__dashboard__" });
@@ -61,6 +62,8 @@ export async function GET() {
         getSheetData(session.accessToken, sheetId, config.tabs.incentive),
         getSheetData(session.accessToken, sheetId, config.tabs.appraisal),
       ]);
+
+    const role = resolveUserRole(sessionRole, userEmail, agentRaw, appraisalRaw);
 
     const agents       = parseAgentSheet(agentRaw);
     const tlSummary    = parseTLSheet(tlRaw);

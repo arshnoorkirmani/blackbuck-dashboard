@@ -5,7 +5,6 @@ import { getSheetData } from '@/lib/google';
 
 export async function POST(req: NextRequest) {
     try {
-
         const session = await auth();
         console.log("[fetch-sheet] session:", JSON.stringify(session, null, 2));
 
@@ -34,14 +33,14 @@ export async function POST(req: NextRequest) {
         const parsedData = await getSheetData(session.accessToken, sheetId, tab ?? undefined);
 
         return NextResponse.json({ success: true, data: parsedData });
-
-    } catch (error: any) {
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Unknown error occurred";
+        const details = error instanceof Error ? error.toString() : String(error);
         console.error("Detailed API Error:", error);
-
         return NextResponse.json(
             {
-                error: error.message || "Unknown error occurred",
-                details: error.toString()
+                error: message,
+                details
             },
             { status: 500 }
         );

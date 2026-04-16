@@ -1,73 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import dbConnect from "@/lib/mongodb";
-import UserConfig from "@/lib/models/UserConfig";
-import { DEFAULT_DASHBOARD_CONFIG } from "@/lib/types/dashboard";
-import { getSheetData } from "@/lib/google";
 import { processData } from "@/lib/dataProcessor";
+import { resolveUserRole } from "@/lib/auth/resolveUserRole";
+import { loadDashboardRawData } from "@/lib/server/dashboard-data";
+import { readTestModeState, readTestSnapshot } from "@/lib/server/test-mode";
+import type { UserRole } from "@/lib/types/dashboard";
 
-import type { UserRole, DashboardConfig } from "@/lib/types/dashboard";
+const VALID_VIEWS = new Set(["dashboard", "team", "analytics"]);
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function GET(req: NextRequest) {
   try {
-    // ── 1. Auth check ─────────────────────────────────────────────────────────
     const session = await auth();
-    if (!session?.accessToken) {
-      return NextResponse.json(
-        { error: "Unauthorized — please sign in." },
-        { status: 401 }
-      );
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "Unauthorized - please sign in." }, { status: 401 });
     }
 
-    const userEmail = session.user?.email?.toLowerCase() ?? "";
-    let role: UserRole = (session.role as UserRole) ?? "AGENT";
+    const requestedView = req.nextUrl.searchParams.get("view") || "dashboard";
+    const view = VALID_VIEWS.has(requestedView)
+      ? (requestedView as "dashboard" | "team" | "analytics")
+      : "dashboard";
 
-    // ── 2. Configuration ───────────────────────────────────────────────────────
-    await dbConnect();
-    const configRecord = await UserConfig.findOne({ email: "__dashboard__" });
-    const config: DashboardConfig = configRecord?.config ?? DEFAULT_DASHBOARD_CONFIG;
-
-    if (!config.sheetUrl) {
-      return NextResponse.json(
-        { error: "Dashboard not configured." },
-        { status: 503 }
-      );
-    }
-
-    const match = config.sheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
-    const sheetId = match?.[1];
-    if (!sheetId) return NextResponse.json({ error: "Invalid Sheet URL." }, { status: 500 });
-
-    const { searchParams } = req.nextUrl;
-    const view = searchParams.get("view") || "dashboard"; // "dashboard" | "team" | "analytics"
-
-    // ── 3. Fetch Data ──────────────────────────────────────────────────────────
-    const [agentRaw, tlRaw, rawSalesRaw, teleSalesRaw, incentiveRaw, appraisalRaw, incentiveStructureRaw, employeeInfoRaw] =
-      await Promise.all([
-        getSheetData(session.accessToken, sheetId, config.tabs.agent),
-        getSheetData(session.accessToken, sheetId, config.tabs.tl),
-        getSheetData(session.accessToken, sheetId, config.tabs.rawSales),
-        getSheetData(session.accessToken, sheetId, config.tabs.teleSales),
-        getSheetData(session.accessToken, sheetId, config.tabs.incentive),
-        getSheetData(session.accessToken, sheetId, config.tabs.appraisal),
-        getSheetData(session.accessToken, sheetId, config.tabs.incentiveStructure),
-        getSheetData(session.accessToken, sheetId, config.tabs.employeeInfo),
-      ]);
+    const userEmail = session.user.email.toLowerCase();
+    const sessionRole: UserRole = (session.role as UserRole) ?? "AGENT";
+    const testState = await readTestModeState();
+    const testSnapshot = testState.enabled ? await readTestSnapshot() : null;
+    const rawPayload = testSnapshot ?? (await loadDashboardRawData(session));
+    const role = resolveUserRole(sessionRole, userEmail, rawPayload.agentRaw as string[][], rawPayload.appraisalRaw as string[][]);
 
     const rawData = {
       role,
       meta: { fetchedAt: new Date().toISOString() },
-      data: {
-        agentRaw, tlRaw, rawSalesRaw, teleSalesRaw, incentiveRaw, appraisalRaw, incentiveStructureRaw, employeeInfoRaw
-      }
+      data: rawPayload,
     };
 
-    // ── 4. Process Data ────────────────────────────────────────────────────────
     const responsePayload = processData(rawData, view, userEmail);
-
     return NextResponse.json(responsePayload);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Internal server error";

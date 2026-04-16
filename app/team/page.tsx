@@ -1,330 +1,334 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
-import { useSession } from "next-auth/react";
-import { MetricCard } from "@/components/dashboard/MetricCard";
-import { AgentCard } from "@/components/dashboard/cards/AgentCard";
-import { AgentLeaderboardChart } from "@/components/dashboard/charts/AgentLeaderboardChart";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Lock, ShieldCheck, Target, TrendingUp, UserCog, Users } from "lucide-react";
+import { useDashboardQuery } from "@/hooks/useDashboardQuery";
+import { formatCurrencyValue, formatPercentValue } from "@/lib/view-models/operations";
+import { EmptyStatePanel, DataTableShell, PermissionStateBanner, WorkspaceHero } from "@/components/workspace/primitives";
+import { StatCard } from "@/components/workspace/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Target, Medal, TrendingUp, ShieldCheck, AlertCircle, Search, LayoutGrid, List, ArrowUpDown, Phone, Star, Headset, Banknote, Coins } from "lucide-react";
-import { useDashboardQuery } from "@/hooks/useDashboardQuery";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-function PageSkeleton() {
+type TeamAgent = {
+  empId: string;
+  email: string;
+  tlName: string;
+  location?: string;
+  status?: string;
+  appraisal?: { name?: string } | null;
+  performance: {
+    totalSold?: number;
+    achPercent?: string;
+    finalPayout?: number;
+    eligibility?: string;
+  };
+};
+
+type TeamResponse = {
+  role?: string;
+  team?: {
+    tlName: string;
+    rank?: number;
+    location?: string;
+    agents?: TeamAgent[];
+    totals?: {
+      agentCount?: number;
+      totalSold?: number;
+      totalFinalPayout?: number;
+      totalConverted10k?: number;
+      activeCount?: number;
+    };
+    performance?: {
+      achPercent?: string;
+      drr?: number;
+      avgTalktime?: string;
+      avgQuality?: string;
+      avgCompletedCalls?: string;
+    };
+  } | null;
+  allTeams?: Array<{
+    tlName: string;
+    rank?: number;
+    location?: string;
+    performance?: { achPercent?: string };
+    totals?: { totalSold?: number; agentCount?: number };
+  }>;
+};
+
+type AccessResponse = {
+  role?: string;
+  access?: {
+    permissions?: {
+      canManageTeamMembers?: boolean;
+      canViewSensitivePayouts?: boolean;
+    };
+  };
+};
+
+function TeamSkeleton() {
   return (
-    <div className="p-5 lg:p-8 space-y-6">
-      <Skeleton className="h-10 w-48" />
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 rounded-2xl" />)}
+    <div className="space-y-6">
+      <Skeleton className="h-40 rounded-[2rem]" />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Skeleton key={index} className="h-32 rounded-[2rem]" />
+        ))}
       </div>
-      <Skeleton className="h-[360px] rounded-2xl" />
+      <div className="grid gap-6 xl:grid-cols-5">
+        <Skeleton className="h-[520px] rounded-[2rem] xl:col-span-3" />
+        <Skeleton className="h-[520px] rounded-[2rem] xl:col-span-2" />
+      </div>
     </div>
   );
 }
 
 export default function TeamPage() {
-  const { data: session, status: sessionStatus } = useSession();
-  const { data, isLoading: dataLoading, error } = useDashboardQuery("team");
-
+  const { data, isLoading, error } = useDashboardQuery("team");
+  const accessQuery = useQuery<AccessResponse>({
+    queryKey: ["access-me-team"],
+    queryFn: async () => {
+      const res = await fetch("/api/access/me", { cache: "no-store" });
+      if (!res.ok) {
+        throw new Error("Unable to load access state");
+      }
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+  const response = (data ?? {}) as TeamResponse;
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<"totalSold" | "achPercent">("totalSold");
-  const [view, setView] = useState<"grid" | "table">("grid");
+  const canManage = accessQuery.data?.access?.permissions?.canManageTeamMembers ?? false;
+  const canViewPayouts = accessQuery.data?.access?.permissions?.canViewSensitivePayouts ?? false;
 
-  const allAgents: any[] = data?.data?.team?.agents ?? data?.team?.agents ?? [];
-  const agents = allAgents.filter((a) => (a.status ?? a.performance?.status ?? "Active") !== "Inactive");
-  const tls: any[]    = data?.data?.team?.leaderboard ?? data?.team?.leaderboard ?? [];
+  const agents = useMemo(() => (response.team?.agents ? [...response.team.agents] : []), [response.team]);
+  const filteredAgents = useMemo(() => {
+    const query = search.trim().toLowerCase();
 
-  const parsePercent = (val: string | number | undefined): number => {
-    if (!val) return 0;
-    return parseFloat(String(val).replace("%", ""));
-  };
+    return agents.filter((agent) => {
+      if (!query) return true;
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return agents
-      .filter((a) =>
-        !q ||
-        a.empId?.toLowerCase().includes(q) ||
-        a.email?.toLowerCase().includes(q) ||
-        a.tlName?.toLowerCase().includes(q) ||
-        String(a.location ?? "").toLowerCase().includes(q)
-      )
-      .sort((a, b) => {
-        const achA = parsePercent(a.achPercent ?? a.performance?.achPercent);
-        const achB = parsePercent(b.achPercent ?? b.performance?.achPercent);
-        const soldA = a.totalSold ?? a.performance?.totalSold ?? 0;
-        const soldB = b.totalSold ?? b.performance?.totalSold ?? 0;
+      return (
+        agent.empId.toLowerCase().includes(query) ||
+        agent.email.toLowerCase().includes(query) ||
+        String(agent.appraisal?.name ?? "").toLowerCase().includes(query)
+      );
+    });
+  }, [agents, search]);
 
-        if (sortBy === "achPercent") return achB - achA;
-        return soldB - soldA;
-      });
-  }, [agents, search, sortBy]);
-
-  const totalSold = agents.reduce((s, a) => s + (a.totalSold ?? a.performance?.totalSold ?? 0), 0);
-  const activeCount = agents.filter((a) => (a.totalSold ?? a.performance?.totalSold ?? 0) > 0).length;
-  const eligibleCount = agents.filter((a) => (a.eligibility ?? a.performance?.eligibility) === "Eligible").length;
-
-  // Team-level operational averages from team performance object
-  const teamPerf = data?.data?.team?.performance ?? data?.team?.performance ?? {};
-  const avgTalktime = teamPerf.avgTalktime ?? "–";
-  const avgQuality = teamPerf.avgQuality ?? "–";
-  const avgCompletedCalls = teamPerf.avgCompletedCalls ?? "–";
-  const totalIncentive = data?.data?.team?.totals?.totalIncentive ?? data?.team?.totals?.totalIncentive ?? 0;
-  const totalFinalPayout = data?.data?.team?.totals?.totalFinalPayout ?? data?.team?.totals?.totalFinalPayout ?? 0;
-  const totalFunnel5k = data?.data?.team?.totals?.totalFunnel5k ?? data?.team?.totals?.totalFunnel5k ?? 0;
-
-  const chartAgents = useMemo(() => filtered.slice(0, 10).map((a) => ({
-    empId: a.empId,
-    totalSold: a.totalSold ?? a.performance?.totalSold ?? 0,
-    achPercent: a.achPercent ?? a.performance?.achPercent ?? "0%",
-    tlName: a.tlName ?? "—",
-  })), [filtered]);
-
-  if (sessionStatus === "loading" || dataLoading) return <PageSkeleton />;
+  if (isLoading) {
+    return <TeamSkeleton />;
+  }
 
   if (error) {
     return (
-      <div className="p-6 lg:p-8 h-full flex items-center justify-center">
-        <div className="bg-red-500/10 text-red-400 border border-red-500/20 px-5 py-4 rounded-2xl flex items-center gap-3">
-          <AlertCircle size={18} />
-          <p>{error instanceof Error ? error.message : "Failed to load team data"}</p>
-        </div>
-      </div>
+      <EmptyStatePanel
+        title="Team workspace unavailable"
+        description={error instanceof Error ? error.message : "Team data could not be loaded right now."}
+      />
     );
   }
 
-  const role = data?.role ?? (session as any)?.role ?? "AGENT";
-
-
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="p-5 lg:p-8 space-y-6 max-w-[1400px] mx-auto"
-    >
-      {/* Header */}
-      <div>
-        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Team Management</p>
-        <h1 className="font-heading text-3xl font-black text-foreground">Team</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {role === "ADMIN" ? "All teams & agents across the platform" : "Your team's performance breakdown"}
-        </p>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard label="Total Agents" value={agents.length} icon={Users} iconColor="text-blue-400" accentClass="accent-blue" delay={0} />
-        <MetricCard label="Active" value={activeCount} sub="with at least 1 sale" icon={ShieldCheck} iconColor="text-emerald-400" accentClass="accent-green" delay={0.08} />
-        <MetricCard label="Eligible" value={eligibleCount} sub="for payout" icon={Target} iconColor="text-amber-400" accentClass="accent-amber" delay={0.16} />
-        <MetricCard label="Total Sales" value={totalSold} icon={TrendingUp} iconColor="text-purple-400" accentClass="accent-purple" delay={0.24} />
-      </div>
-
-      {/* Team Operational Averages */}
-      <div className="bg-card border border-border/50 rounded-[2rem] shadow-xl p-6">
-         <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border/50">
-            <div className="p-2.5 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20">
-               <Headset size={18} />
-            </div>
-            <div>
-               <h3 className="text-lg font-black tracking-tight">Team Averages</h3>
-               <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest opacity-60">Operational & Compensation Overview</p>
-            </div>
-         </div>
-         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <MetricCard label="Avg Talktime" value={avgTalktime} icon={Phone} iconColor="text-blue-400" accentClass="accent-blue" delay={0} />
-            <MetricCard label="Avg Quality" value={avgQuality} icon={Star} iconColor="text-amber-400" accentClass="accent-amber" delay={0.05} />
-            <MetricCard label="Avg Calls" value={avgCompletedCalls} icon={Headset} iconColor="text-emerald-400" accentClass="accent-green" delay={0.1} />
-            <MetricCard label="Total Incentive" value={totalIncentive > 0 ? `₹${totalIncentive.toLocaleString()}` : "0"} icon={Coins} iconColor="text-fuchsia-400" accentClass="accent-fuchsia" delay={0.15} />
-            <MetricCard label="Total Payout" value={totalFinalPayout > 0 ? `₹${totalFinalPayout.toLocaleString()}` : "0"} icon={Banknote} iconColor="text-purple-400" accentClass="accent-purple" delay={0.2} />
-            <MetricCard label="5K+ Funnel" value={totalFunnel5k} icon={Target} iconColor="text-indigo-400" accentClass="accent-indigo" delay={0.25} />
-         </div>
-      </div>
-
-      {/* Content Tabs */}
-      <Tabs defaultValue="agents">
-        {/* Tab bar + Search/Sort/View controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-          <TabsList className="h-9">
-            <TabsTrigger value="agents" className="text-xs gap-1.5"><Users size={13} />Agents</TabsTrigger>
-            {role !== "AGENT" && <TabsTrigger value="tls" className="text-xs gap-1.5"><Medal size={13} />TL Rankings</TabsTrigger>}
-            <TabsTrigger value="chart" className="text-xs gap-1.5"><TrendingUp size={13} />Chart</TabsTrigger>
-          </TabsList>
-
-          <div className="flex items-center gap-2 flex-1">
-            <div className="relative flex-1 max-w-sm">
-              <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name, email, TL, location..."
-                className="pl-8 h-9 text-sm"
-              />
-            </div>
-            <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
-              <SelectTrigger className="h-9 w-36 text-xs gap-1">
-                <ArrowUpDown size={11} />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="totalSold">Sort: Sales</SelectItem>
-                <SelectItem value="achPercent">Sort: Achievement</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="flex rounded-xl border border-border overflow-hidden">
-              <Button variant={view === "grid" ? "default" : "ghost"} size="sm" className="h-9 px-3 rounded-none" onClick={() => setView("grid")}>
-                <LayoutGrid size={14} />
-              </Button>
-              <Button variant={view === "table" ? "default" : "ghost"} size="sm" className="h-9 px-3 rounded-none" onClick={() => setView("table")}>
-                <List size={14} />
-              </Button>
-            </div>
+    <div className="space-y-6">
+      <WorkspaceHero
+        badge="TL workspace"
+        title={response.team?.tlName || "Team workspace"}
+        description="Manage your active roster, compare current productivity, and work inside permission-aware controls that respect super admin governance."
+        meta={
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary" className="rounded-full px-3 py-1">
+              {response.role || "TL"}
+            </Badge>
+            <Badge variant="secondary" className="rounded-full px-3 py-1">
+              Rank {response.team?.rank ?? "-"}
+            </Badge>
+            <Badge variant="secondary" className="rounded-full px-3 py-1">
+              {response.team?.location || "Location unavailable"}
+            </Badge>
           </div>
-        </div>
-
-        {/* Agents Tab */}
-        <TabsContent value="agents">
-          {search && (
-            <p className="text-xs text-muted-foreground mb-3">{filtered.length} result{filtered.length !== 1 ? "s" : ""} for "{search}"</p>
-          )}
-
-          {view === "grid" ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filtered.map((agent: any, idx: number) => {
-                const mapped = {
-                  empId: agent.empId,
-                  email: agent.email || "",
-                  performance: {
-                    achPercent: agent.achPercent ?? agent.performance?.achPercent ?? "0%",
-                    planSaleTarget: agent.planSaleTarget ?? agent.performance?.planSaleTarget ?? 0,
-                    totalSold: agent.totalSold ?? agent.performance?.totalSold ?? 0,
-                    eligibility: agent.eligibility ?? agent.performance?.eligibility ?? "Not Eligible",
-                    finalPayout: agent.finalPayout ?? agent.performance?.finalPayout ?? 0,
-                  },
-                };
-                return <AgentCard key={agent.empId ?? idx} agent={mapped} />;
-              })}
-              {filtered.length === 0 && (
-                <div className="col-span-full py-12 text-center text-muted-foreground bg-card rounded-2xl border border-border">
-                  No agents match your search
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="bg-card border border-border rounded-2xl overflow-hidden">
-              <div className="overflow-x-auto">
-                <Table className="table-row-hover">
-                  <TableHeader>
-                    <TableRow className="border-border bg-muted/30">
-                      <TableHead className="w-10">#</TableHead>
-                      <TableHead>EmpID</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Team Leader</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead className="text-right">Target</TableHead>
-                      <TableHead className="text-right">Sold</TableHead>
-                      <TableHead className="text-right">Ach%</TableHead>
-                      <TableHead className="text-right">Payout</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filtered.map((a: any, i: number) => {
-                      const ach = parsePercent(a.achPercent ?? a.performance?.achPercent);
-                      const elig = a.eligibility ?? a.performance?.eligibility ?? "Not Eligible";
-                      const payout = a.finalPayout ?? a.performance?.finalPayout ?? 0;
-                      return (
-                        <TableRow key={a.empId ?? i} className="border-border">
-                          <TableCell className="text-[11px] text-muted-foreground font-mono">{i + 1}</TableCell>
-                          <TableCell className="font-mono font-bold text-sm">{a.empId}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{a.email ?? "—"}</TableCell>
-                          <TableCell className="text-xs">{a.tlName ?? "—"}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">{a.location ?? a.performance?.location ?? "—"}</TableCell>
-                          <TableCell className="text-right font-mono text-sm">{a.planSaleTarget ?? a.performance?.planSaleTarget ?? "—"}</TableCell>
-                          <TableCell className="text-right font-mono font-bold">{a.totalSold ?? a.performance?.totalSold ?? 0}</TableCell>
-                          <TableCell className="text-right">
-                            <span className={`font-mono text-xs font-bold ${ach >= 100 ? "text-emerald-400" : ach >= 75 ? "text-amber-400" : ach >= 50 ? "text-orange-400" : "text-red-400"}`}>
-                              {a.achPercent ?? a.performance?.achPercent ?? "0%"}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-xs">{payout > 0 ? `₹${payout.toLocaleString()}` : "—"}</TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="outline" className={`text-[10px] ${elig === "Eligible" ? "badge-success" : "badge-danger"}`}>
-                              {elig}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                    {filtered.length === 0 && <TableRow><TableCell colSpan={10} className="py-10 text-center text-muted-foreground">No agents found</TableCell></TableRow>}
-                  </TableBody>
-                </Table>
+        }
+        actions={
+          <Card className="rounded-[1.75rem] border-border/70 bg-background/70 shadow-none">
+            <CardContent className="grid gap-3 p-5 sm:grid-cols-3">
+              <div className="rounded-2xl border border-border/70 bg-card p-4">
+                <p className="text-xs text-muted-foreground">Achievement</p>
+                <p className="mt-2 text-xl font-semibold text-foreground">
+                  {formatPercentValue(response.team?.performance?.achPercent)}
+                </p>
               </div>
-            </div>
-          )}
-        </TabsContent>
+              <div className="rounded-2xl border border-border/70 bg-card p-4">
+                <p className="text-xs text-muted-foreground">DRR</p>
+                <p className="mt-2 text-xl font-semibold text-foreground">
+                  {Number(response.team?.performance?.drr ?? 0)}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-card p-4">
+                <p className="text-xs text-muted-foreground">Active agents</p>
+                <p className="mt-2 text-xl font-semibold text-foreground">
+                  {Number(response.team?.totals?.activeCount ?? 0)}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        }
+        aside={
+          <PermissionStateBanner
+            enabled={canManage}
+            description={
+              canManage
+                ? "Team management controls are enabled. You can supervise member-level actions and move through management flows."
+                : "Super admin has disabled TL edit permissions. Data remains visible, but action controls stay locked."
+            }
+          />
+        }
+      />
 
-        {/* TL Rankings */}
-        {role !== "AGENT" && (
-          <TabsContent value="tls">
-            <div className="bg-card border border-border rounded-2xl overflow-hidden">
-              <Table className="table-row-hover">
-                <TableHeader>
-                  <TableRow className="border-border bg-muted/30">
-                    <TableHead className="w-14">Rank</TableHead>
-                    <TableHead>Team Leader</TableHead>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          title="Agents in team"
+          value={Number(response.team?.totals?.agentCount ?? agents.length)}
+          description="Current roster size"
+          icon={Users}
+          tone="blue"
+        />
+        <StatCard
+          title="Total sold"
+          value={Number(response.team?.totals?.totalSold ?? 0)}
+          description="Combined team production"
+          icon={TrendingUp}
+          tone="green"
+        />
+        <StatCard
+          title="Active agents"
+          value={Number(response.team?.totals?.activeCount ?? 0)}
+          description="Members with active status"
+          icon={ShieldCheck}
+          tone="amber"
+        />
+        <StatCard
+          title="Team DRR"
+          value={Number(response.team?.performance?.drr ?? 0)}
+          description={`Achievement ${formatPercentValue(response.team?.performance?.achPercent)}`}
+          icon={Target}
+          tone="rose"
+        />
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-5">
+        <DataTableShell
+          title="Team member detail"
+          description="Searchable team operations table with permission-aware actions and stable payout visibility."
+          className="xl:col-span-3"
+          toolbar={
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search team member by name, email, or employee ID"
+              className="w-full rounded-2xl md:w-[340px]"
+            />
+          }
+        >
+          {!filteredAgents.length ? (
+            <EmptyStatePanel
+              title="No team members match this search"
+              description="Try a different name, email, or employee ID to restore the roster view."
+            />
+          ) : (
+            <div className="dashboard-scroll-shell max-h-[36rem] overflow-auto rounded-[1.5rem] border border-border/70">
+              <Table>
+                <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
+                  <TableRow className="bg-card/95 hover:bg-card/95">
+                    <TableHead>Agent</TableHead>
                     <TableHead>Location</TableHead>
-                    <TableHead className="text-right">Agents</TableHead>
-                    <TableHead className="text-right">Total Sold</TableHead>
-                    <TableHead className="text-right">Ach%</TableHead>
-                    <TableHead className="text-right">DRR</TableHead>
+                    <TableHead className="text-right">Total sold</TableHead>
+                    <TableHead className="text-right">Achievement</TableHead>
+                    <TableHead className="text-right">Payout</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tls.map((tl: any, i: number) => {
-                    const rank = tl.rank ?? i + 1;
-                    return (
-                      <TableRow key={tl.tlName ?? i} className="border-border">
-                        <TableCell>
-                          <span className={`inline-flex size-7 items-center justify-center rounded-lg border text-[11px] font-bold font-mono ${
-                            rank === 1 ? "bg-yellow-500/15 border-yellow-500/20 text-yellow-400" :
-                            rank === 2 ? "bg-zinc-400/15 border-zinc-400/20 text-zinc-400" :
-                            rank === 3 ? "bg-orange-500/15 border-orange-500/20 text-orange-400" :
-                            "bg-muted border-transparent text-muted-foreground"
-                          }`}>{rank}</span>
-                        </TableCell>
-                        <TableCell className="font-semibold text-sm">{tl.tlName ?? tl.empId}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{tl.location ?? "—"}</TableCell>
-                        <TableCell className="text-right font-mono text-sm">{tl.agentCount ?? "—"}</TableCell>
-                        <TableCell className="text-right font-mono font-bold text-primary">{tl.totalSold ?? tl.performance?.totalSold ?? 0}</TableCell>
-                        <TableCell className="text-right">
-                          <span className="font-mono text-xs font-bold text-emerald-400">{tl.achPercent ?? "0%"}</span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Badge variant="outline" className="font-mono text-[10px]">{tl.drr ?? tl.performance?.drr ?? 0}/day</Badge>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  {tls.length === 0 && <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">No TL data available</TableCell></TableRow>}
+                  {filteredAgents.map((agent) => (
+                    <TableRow key={agent.email}>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <p className="font-medium text-foreground">{agent.appraisal?.name || agent.email}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {agent.empId} - {agent.email}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell>{agent.location || "-"}</TableCell>
+                      <TableCell className="text-right">{Number(agent.performance.totalSold ?? 0)}</TableCell>
+                      <TableCell className="text-right">{formatPercentValue(agent.performance.achPercent)}</TableCell>
+                      <TableCell className="text-right">
+                        {canViewPayouts ? formatCurrencyValue(agent.performance.finalPayout) : "Hidden"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant={canManage ? "default" : "outline"}
+                          size="sm"
+                          disabled={!canManage}
+                          className="rounded-xl"
+                        >
+                          {canManage ? (
+                            <>
+                              <UserCog className="mr-2 size-4" />
+                              Manage
+                            </>
+                          ) : (
+                            <>
+                              <Lock className="mr-2 size-4" />
+                              Locked
+                            </>
+                          )}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
-          </TabsContent>
-        )}
+          )}
+        </DataTableShell>
 
-        {/* Chart Tab */}
-        <TabsContent value="chart">
-          <div className="h-[420px]">
-            <AgentLeaderboardChart agents={chartAgents} />
-          </div>
-        </TabsContent>
-      </Tabs>
-    </motion.div>
+        <Card className="rounded-[2rem] border-border/70 xl:col-span-2">
+          <CardHeader>
+            <CardTitle>Cross-team comparison</CardTitle>
+            <CardDescription>Other teams stay visible for performance context while your own team remains the main workspace.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {(response.allTeams ?? []).length ? (
+              (response.allTeams ?? []).slice(0, 6).map((team) => (
+                <div key={team.tlName} className="rounded-[1.5rem] border border-border/70 bg-background/70 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-foreground">{team.tlName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {team.location || "No location"} - Rank {team.rank ?? "-"}
+                      </p>
+                    </div>
+                    <Badge variant="outline">{formatPercentValue(team.performance?.achPercent)}</Badge>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                    <div className="rounded-xl bg-card p-3">Sales: {Number(team.totals?.totalSold ?? 0)}</div>
+                    <div className="rounded-xl bg-card p-3">Agents: {Number(team.totals?.agentCount ?? 0)}</div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <EmptyStatePanel
+                title="No comparison teams available"
+                description="This view will show the rest of the organization once comparison data is available."
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }

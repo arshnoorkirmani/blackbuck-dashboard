@@ -1,160 +1,231 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Database, KeyRound, Save, ShieldCheck } from "lucide-react";
+import { toast } from "sonner";
+import { DEFAULT_DASHBOARD_CONFIG, type DashboardConfig } from "@/lib/types/dashboard";
+import { EmptyStatePanel, PermissionStateBanner, WorkspaceHero } from "@/components/workspace/primitives";
 import { Badge } from "@/components/ui/badge";
-import { Save, RefreshCw } from "lucide-react";
-import defaultConfig from "@/defaultConfig.json";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+
+type AccessResponse = {
+  role?: string;
+  access?: {
+    permissions?: {
+      canManageDashboardConfig?: boolean;
+    };
+  };
+};
+
+function SettingsSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Skeleton className="h-40 rounded-[2rem]" />
+      <Skeleton className="h-[560px] rounded-[2rem]" />
+    </div>
+  );
+}
 
 export default function SettingsPage() {
-  const [sheetUrl, setSheetUrl] = useState(defaultConfig.sheetUrl || "");
-  const [tabs, setTabs] = useState({ ...defaultConfig.tabs });
-  const [planPoints, setPlanPoints] = useState<Record<string, number>>({ ...defaultConfig.planPoints });
-  const [planPrices, setPlanPrices] = useState<Record<string, number>>({ ...defaultConfig.planPrices });
-  const [saved, setSaved] = useState(false);
+  const [config, setConfig] = useState<DashboardConfig>(DEFAULT_DASHBOARD_CONFIG);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const [visibility, setVisibility] = useState({
-    agentCanSeeTeamRank: true,
-    agentCanSeeOtherAgents: false,
-    tlCanSeeAllTeams: false,
-    showPayoutToAgent: true,
-    showEligibilityBadge: true,
+  const configQuery = useQuery<{ dashboardConfig: DashboardConfig }>({
+    queryKey: ["dashboard-config"],
+    queryFn: async () => {
+      const res = await fetch("/api/config?type=dashboard", { cache: "no-store" });
+      if (!res.ok) {
+        throw new Error("Unable to load dashboard config");
+      }
+      return res.json();
+    },
+    staleTime: 60_000,
   });
 
+  const accessQuery = useQuery<AccessResponse>({
+    queryKey: ["settings-access"],
+    queryFn: async () => {
+      const res = await fetch("/api/access/me", { cache: "no-store" });
+      if (!res.ok) {
+        throw new Error("Unable to load access profile");
+      }
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+
+  useEffect(() => {
+    if (configQuery.data?.dashboardConfig) {
+      setConfig(configQuery.data.dashboardConfig);
+    }
+  }, [configQuery.data?.dashboardConfig]);
+
+  const canEdit = accessQuery.data?.access?.permissions?.canManageDashboardConfig ?? false;
+
+  if (configQuery.isLoading || accessQuery.isLoading) {
+    return <SettingsSkeleton />;
+  }
+
+  if (configQuery.error || accessQuery.error) {
+    return (
+      <EmptyStatePanel
+        title="Settings unavailable"
+        description={
+          configQuery.error instanceof Error
+            ? configQuery.error.message
+            : accessQuery.error instanceof Error
+              ? accessQuery.error.message
+              : "Settings data could not be loaded."
+        }
+      />
+    );
+  }
+
   const handleSave = async () => {
-    // Wire to /api/config POST
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "dashboard", dashboardConfig: config }),
+      });
+
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({ error: "Unable to save dashboard config" }));
+        throw new Error(payload.error || "Unable to save dashboard config");
+      }
+
+      await configQuery.refetch();
+      toast.success("Dashboard configuration saved");
+    } catch (saveError) {
+      toast.error(saveError instanceof Error ? saveError.message : "Unable to save dashboard configuration");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
-    <div className="p-6 lg:p-8 space-y-8 animate-in fade-in duration-300 max-w-3xl">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-2xl font-bold text-foreground">Settings</h1>
-          <p className="text-sm text-muted-foreground mt-1">Configure data source, plan structure and access controls</p>
-        </div>
-        <Button onClick={handleSave} size="sm" className="gap-1.5">
-          {saved ? <><RefreshCw size={13} className="animate-spin" /> Saved!</> : <><Save size={13} /> Save Changes</>}
-        </Button>
-      </div>
+    <div className="space-y-6">
+      <WorkspaceHero
+        badge="Dashboard settings"
+        title="Data source and access guidance"
+        description="Configure dashboard source tabs, review login methods, and keep operational access aligned with governance rules from the super admin console."
+        meta={
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary" className="rounded-full px-3 py-1">
+              {canEdit ? "Editable" : "Read only"}
+            </Badge>
+            <Badge variant="secondary" className="rounded-full px-3 py-1">
+              Google + Super admin login
+            </Badge>
+          </div>
+        }
+        actions={
+          <Card className="rounded-[1.75rem] border-border/70 bg-background/70 shadow-none">
+            <CardContent className="grid gap-4 p-5 sm:grid-cols-2">
+              <div className="rounded-2xl border border-border/70 bg-card p-4">
+                <p className="text-xs text-muted-foreground">Edit access</p>
+                <p className="mt-2 text-lg font-semibold text-foreground">{canEdit ? "Enabled" : "Read only"}</p>
+              </div>
+              <div className="rounded-2xl border border-border/70 bg-card p-4">
+                <p className="text-xs text-muted-foreground">Login methods</p>
+                <p className="mt-2 text-sm font-medium text-foreground">Google Workspace and server-defined super admin credentials</p>
+              </div>
+            </CardContent>
+          </Card>
+        }
+        aside={
+          <PermissionStateBanner
+            enabled={canEdit}
+            enabledLabel="Config edits enabled"
+            disabledLabel="Config edits restricted"
+            description={
+              canEdit
+                ? "This role can update the Google Sheet URL and tab mapping from the settings workspace."
+                : "Configuration remains visible, but save actions are locked until a role with dashboard-config permission signs in."
+            }
+          />
+        }
+      />
 
-      <Tabs defaultValue="sheet">
-        <TabsList className="mb-6">
-          <TabsTrigger value="sheet">Data Source</TabsTrigger>
-          <TabsTrigger value="plans">Plan Config</TabsTrigger>
-          <TabsTrigger value="access">Access Control</TabsTrigger>
-        </TabsList>
-
-        {/* Data Source */}
-        <TabsContent value="sheet" className="space-y-6">
-          <div className="bg-card border border-border rounded-xl p-6 space-y-5">
-            <div>
-              <h2 className="font-semibold text-foreground text-sm mb-1">Google Sheet URL</h2>
-              <p className="text-[12px] text-muted-foreground">The Google Sheet containing all sales data</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="sheet-url">Sheet URL</Label>
+      <div className="grid gap-6 xl:grid-cols-3">
+        <Card className="rounded-[2rem] border-border/70 xl:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="size-5 text-primary" />
+              Dashboard source configuration
+            </CardTitle>
+            <CardDescription>Editable only when the current role has dashboard configuration permission.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Google Sheet URL</label>
               <Input
-                id="sheet-url"
-                value={sheetUrl}
-                onChange={e => setSheetUrl(e.target.value)}
-                placeholder="https://docs.google.com/spreadsheets/d/…"
-                className="font-mono text-xs"
+                value={config.sheetUrl}
+                disabled={!canEdit}
+                onChange={(event) => setConfig((current) => ({ ...current, sheetUrl: event.target.value }))}
+                className="rounded-2xl"
               />
             </div>
-          </div>
 
-          <div className="bg-card border border-border rounded-xl p-6 space-y-5">
-            <div>
-              <h2 className="font-semibold text-foreground text-sm mb-1">Tab Names</h2>
-              <p className="text-[12px] text-muted-foreground">Exact sheet tab names (case-sensitive)</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {(Object.keys(tabs) as (keyof typeof tabs)[]).map(key => (
-                <div key={key} className="space-y-1.5">
-                  <Label htmlFor={`tab-${key}`} className="capitalize text-[12px]">
-                    {key.replace(/([A-Z])/g, " $1").trim()}
-                  </Label>
+            <div className="grid gap-4 md:grid-cols-2">
+              {Object.entries(config.tabs).map(([key, value]) => (
+                <div key={key} className="space-y-2">
+                  <label className="text-sm font-medium capitalize text-foreground">{key}</label>
                   <Input
-                    id={`tab-${key}`}
-                    value={tabs[key]}
-                    onChange={e => setTabs(prev => ({ ...prev, [key]: e.target.value }))}
-                    className="font-mono text-xs h-8"
+                    value={value}
+                    disabled={!canEdit}
+                    onChange={(event) =>
+                      setConfig((current) => ({
+                        ...current,
+                        tabs: {
+                          ...current.tabs,
+                          [key as keyof DashboardConfig["tabs"]]: event.target.value,
+                        },
+                      }))
+                    }
+                    className="rounded-2xl"
                   />
                 </div>
               ))}
             </div>
-          </div>
-        </TabsContent>
 
-        {/* Plan Config */}
-        <TabsContent value="plans" className="space-y-6">
-          <div className="bg-card border border-border rounded-xl p-6 space-y-5">
-            <div>
-              <h2 className="font-semibold text-foreground text-sm mb-1">Plan Points</h2>
-              <p className="text-[12px] text-muted-foreground">Sale points assigned per plan type — used for target &amp; DRR calculation</p>
-            </div>
-            <div className="space-y-4">
-              {(Object.entries(planPoints)).map(([plan, val]) => (
-                <div key={plan} className="flex items-center gap-4">
-                  <Badge variant="outline" className="font-mono text-[10px] w-40 justify-center shrink-0">{plan}</Badge>
-                  <div className="flex items-center gap-2 flex-1">
-                    <Label className="text-[12px] text-muted-foreground w-14 shrink-0">Points</Label>
-                    <Input
-                      type="number"
-                      value={val}
-                      onChange={e => setPlanPoints(prev => ({ ...prev, [plan]: Number(e.target.value) }))}
-                      className="w-20 h-8 font-mono text-sm"
-                      min={0}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-[12px] text-muted-foreground w-10 shrink-0">Price</Label>
-                    <Input
-                      type="number"
-                      value={planPrices[plan] ?? 0}
-                      onChange={e => setPlanPrices(prev => ({ ...prev, [plan]: Number(e.target.value) }))}
-                      className="w-24 h-8 font-mono text-sm"
-                      min={0}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </TabsContent>
+            <Button onClick={handleSave} disabled={!canEdit || isSaving} className="rounded-2xl">
+              <Save className="mr-2 size-4" />
+              {isSaving ? "Saving..." : "Save dashboard configuration"}
+            </Button>
+          </CardContent>
+        </Card>
 
-        {/* Access Control */}
-        <TabsContent value="access" className="space-y-6">
-          <div className="bg-card border border-border rounded-xl p-6 space-y-5">
-            <div>
-              <h2 className="font-semibold text-foreground text-sm mb-1">Data Visibility</h2>
-              <p className="text-[12px] text-muted-foreground">Control what each role can see on the dashboard</p>
+        <Card className="rounded-[2rem] border-border/70">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <KeyRound className="size-5 text-primary" />
+              Login and permission notes
+            </CardTitle>
+            <CardDescription>Quick reminders for people operating the platform.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-muted-foreground">
+            <div className="rounded-[1.5rem] border border-border/70 bg-background/70 p-4">
+              Google users sign in with their corporate account and inherit role-aware access.
             </div>
-            <div className="space-y-4">
-              {(Object.entries(visibility) as [keyof typeof visibility, boolean][]).map(([key, val]) => (
-                <div key={key} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-                  <div>
-                    <p className="text-[13px] font-medium text-foreground">
-                      {key.replace(/([A-Z])/g, " $1").replace(/^./, s => s.toUpperCase())}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={val}
-                    onCheckedChange={v => setVisibility(prev => ({ ...prev, [key]: v }))}
-                  />
-                </div>
-              ))}
+            <div className="rounded-[1.5rem] border border-border/70 bg-background/70 p-4">
+              Super admin credentials are server-side and power the control center even without a Google session.
             </div>
-          </div>
-        </TabsContent>
-      </Tabs>
+            <div className="rounded-[1.5rem] border border-border/70 bg-background/70 p-4">
+              TL edit controls can be disabled from the super admin page. When disabled, TLs continue to see data but lose change actions.
+            </div>
+            <div className="rounded-[1.5rem] border border-primary/20 bg-primary/5 p-4 text-primary">
+              <ShieldCheck className="mb-2 size-5" />
+              Permissions are enforced through the database-backed access model and reflected directly in the UI.
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

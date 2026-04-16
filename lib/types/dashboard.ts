@@ -1,6 +1,6 @@
 // ─── Role ────────────────────────────────────────────────────────────────────
 
-export type UserRole = "ADMIN" | "TL" | "AGENT";
+export type UserRole = "SUPER_ADMIN" | "ADMIN" | "TL" | "AGENT";
 
 // ─── Dashboard Configuration (stored in MongoDB) ──────────────────────────────
 

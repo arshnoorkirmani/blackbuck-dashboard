@@ -464,3 +464,57 @@ input[type=date]::-webkit-calendar-picker-indicator {
   color: #EF4444;
   border-color: rgba(239, 68, 68, 0.25);
 }
+
+/* Workspace surfaces */
+.app-shell-background {
+  background-image:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--chart-2) 10%, transparent), transparent 28%),
+    radial-gradient(circle at bottom right, color-mix(in oklab, var(--chart-1) 12%, transparent), transparent 24%);
+}
+
+.landing-background {
+  background-image:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--chart-2) 16%, transparent), transparent 25%),
+    radial-gradient(circle at bottom right, color-mix(in oklab, var(--chart-1) 18%, transparent), transparent 22%),
+    linear-gradient(180deg, color-mix(in oklab, var(--background) 92%, white), color-mix(in oklab, var(--background) 84%, var(--chart-2) 4%));
+}
+
+.dark .landing-background {
+  background-image:
+    radial-gradient(circle at top left, color-mix(in oklab, var(--chart-2) 24%, transparent), transparent 26%),
+    radial-gradient(circle at bottom right, color-mix(in oklab, var(--chart-1) 18%, transparent), transparent 22%),
+    linear-gradient(180deg, color-mix(in oklab, var(--background) 92%, black), color-mix(in oklab, var(--background) 86%, var(--chart-2) 5%));
+}
+
+.sidebar-surface {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--card) 96%, white),
+    color-mix(in oklab, var(--card) 88%, var(--muted) 12%)
+  );
+}
+
+.dark .sidebar-surface {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--card) 96%, black),
+    color-mix(in oklab, var(--card) 88%, var(--muted) 12%)
+  );
+}
+
+.surface-panel {
+  background: color-mix(in oklab, var(--card) 90%, transparent);
+  border: 1px solid color-mix(in oklab, var(--border) 88%, transparent);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.surface-panel-muted {
+  background: color-mix(in oklab, var(--muted) 42%, transparent);
+  border: 1px solid color-mix(in oklab, var(--border) 88%, transparent);
+}
+
+.dashboard-scroll-shell {
+  scrollbar-gutter: stable;
+}

@@ -33,6 +33,9 @@ export function validateEnv() {
         nextAuthUrl: process.env.NEXTAUTH_URL || "http://localhost:3000",
         allowedDomain: process.env.ALLOWED_DOMAIN || "@blackbuck.com",
         adminEmails: (process.env.ADMIN_EMAILS || "").split(",").map(e => e.trim().toLowerCase()),
+        superAdminEmail: process.env.SUPER_ADMIN_EMAIL || "superadmin@blackbuck.local",
+        superAdminPassword: process.env.SUPER_ADMIN_PASSWORD || "Blackbuck@123",
+        superAdminName: process.env.SUPER_ADMIN_NAME || "BlackBuck Super Admin",
     };
 }
 

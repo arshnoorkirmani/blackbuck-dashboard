@@ -7,9 +7,7 @@ import { Input } from "@/components/ui/input";
 type RowData = string[];
 
 export default function TestPage() {
-    const [url, setUrl] = React.useState(
-        "https://docs.google.com/spreadsheets/d/1wlLwha1cf7DDbFmf_sxTQWExQad4E_TlPpsTw3bJLZ4/edit"
-    );
+    const [url, setUrl] = React.useState("");
     const [tabs, setTabs] = React.useState<string[]>([]);
     const [selectedTab, setSelectedTab] = React.useState<string>("");
     const [data, setData] = React.useState<RowData[] | null>(null);
@@ -17,13 +15,13 @@ export default function TestPage() {
     const [tabsLoading, setTabsLoading] = React.useState(false);
     const [dataLoading, setDataLoading] = React.useState(false);
 
-    // Step 1: Load all tabs for the given spreadsheet URL
     const handleLoadTabs = async () => {
         setTabsLoading(true);
         setError(null);
         setTabs([]);
         setSelectedTab("");
         setData(null);
+
         try {
             const res = await fetch("/api/fetch-sheet-tabs", {
                 method: "POST",
@@ -33,21 +31,19 @@ export default function TestPage() {
             const json = await res.json();
             if (!res.ok) throw new Error(json.error || "Failed to load tabs");
             setTabs(json.tabs);
-            console.log("JSON", json);
-            console.log("Data", json.data);
-        } catch (e: any) {
-            setError(e.message);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : "Failed to load tabs");
         } finally {
             setTabsLoading(false);
         }
     };
 
-    // Step 2: Fetch data for selected tab
     const handleFetchData = async (tab: string) => {
         setSelectedTab(tab);
         setDataLoading(true);
         setError(null);
         setData(null);
+
         try {
             const res = await fetch("/api/fetch-sheet", {
                 method: "POST",
@@ -57,10 +53,8 @@ export default function TestPage() {
             const json = await res.json();
             if (!res.ok) throw new Error(json.error || "Failed to fetch data");
             setData(json.data);
-            console.log("JSON", json);
-            console.log("Data", json.data);
-        } catch (e: any) {
-            setError(e.message);
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : "Failed to fetch data");
         } finally {
             setDataLoading(false);
         }
@@ -72,9 +66,8 @@ export default function TestPage() {
     return (
         <div style={styles.page}>
             <div style={styles.card}>
-                <h1 style={styles.title}>📊 Google Sheet Viewer</h1>
+                <h1 style={styles.title}>Google Sheet Viewer</h1>
 
-                {/* URL Input */}
                 <div style={styles.row}>
                     <Input
                         id="sheet-url-input"
@@ -89,14 +82,12 @@ export default function TestPage() {
                         disabled={tabsLoading || !url}
                         style={styles.primaryBtn}
                     >
-                        {tabsLoading ? "Loading…" : "Load Tabs"}
+                        {tabsLoading ? "Loading..." : "Load Tabs"}
                     </Button>
                 </div>
 
-                {/* Error */}
-                {error && <div style={styles.error}>⚠️ {error}</div>}
+                {error && <div style={styles.error}>{error}</div>}
 
-                {/* Tab Picker */}
                 {tabs.length > 0 && (
                     <div style={styles.tabSection}>
                         <p style={styles.label}>Select a sheet tab:</p>
@@ -118,12 +109,12 @@ export default function TestPage() {
                     </div>
                 )}
 
-                {/* Loading data spinner */}
                 {dataLoading && (
-                    <div style={styles.statusMsg}>⏳ Fetching data from "{selectedTab}"…</div>
+                    <div style={styles.statusMsg}>
+                        Fetching data from &quot;{selectedTab}&quot;...
+                    </div>
                 )}
 
-                {/* Data Table */}
                 {data && !dataLoading && (
                     <div style={styles.tableWrapper}>
                         <p style={styles.label}>
@@ -158,7 +149,6 @@ export default function TestPage() {
     );
 }
 
-// ─── Inline styles ─────────────────────────────────────────────────────────────
 const styles: Record<string, React.CSSProperties> = {
     page: {
         minHeight: "100vh",

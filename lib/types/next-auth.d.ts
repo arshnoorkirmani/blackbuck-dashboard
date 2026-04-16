@@ -7,6 +7,12 @@ declare module "next-auth" {
     expiresAt: number;
     error?: string;
     role: UserRole;
+    authProvider?: "google" | "credentials";
+  }
+
+  interface User {
+    role?: UserRole;
+    authProvider?: "google" | "credentials";
   }
 }
 
@@ -17,5 +23,6 @@ declare module "next-auth/jwt" {
     expiresAt?: number;
     error?: string;
     role?: UserRole;
+    authProvider?: "google" | "credentials";
   }
-}
+}

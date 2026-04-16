@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import { AlertTriangle, Home, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface Props {
@@ -13,13 +13,9 @@ interface State {
   error?: Error;
 }
 
-/**
- * PRODUCTION-READY ERROR BOUNDARY
- * Catches client-side crashes and provides a graceful recovery UI.
- */
 export class GlobalErrorBoundary extends Component<Props, State> {
   public state: State = {
-    hasError: false
+    hasError: false,
   };
 
   public static getDerivedStateFromError(error: Error): State {
@@ -27,39 +23,32 @@ export class GlobalErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('❌ CRITICAL FRONTEND ERROR:', error, errorInfo);
+    console.error('Critical frontend error:', error, errorInfo);
   }
 
   public render() {
     if (this.state.hasError) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-6 text-center">
-          <div className="size-20 rounded-3xl bg-destructive/10 border border-destructive/20 flex items-center justify-center mb-6 shadow-pill animate-pulse">
-             <AlertTriangle className="size-10 text-destructive" />
+        <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-center">
+          <div className="mb-6 flex size-20 items-center justify-center rounded-3xl border border-destructive/20 bg-destructive/10">
+            <AlertTriangle className="size-10 text-destructive" />
           </div>
-          <h1 className="text-3xl font-black font-heading text-foreground tracking-tight mb-2 uppercase">
-             Registry Integrity Failure
+          <h1 className="mb-2 text-3xl font-semibold tracking-tight text-foreground">
+            Something went wrong in the workspace
           </h1>
-          <p className="text-sm text-muted-foreground max-w-md mb-8 leading-relaxed font-medium">
-             An unexpected exception occurred in the dashboard engine. We have logged the incident for immediate review.
+          <p className="mb-8 max-w-md text-sm leading-relaxed text-muted-foreground">
+            An unexpected frontend error interrupted the current view. Refresh the workspace or return to the landing
+            page to recover safely.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4">
-             <Button 
-                variant="default" 
-                size="lg" 
-                className="font-black gap-2 uppercase tracking-widest px-8"
-                onClick={() => window.location.reload()}
-             >
-                <RefreshCw className="size-4" /> Hard Refresh
-             </Button>
-             <Button 
-                variant="outline" 
-                size="lg" 
-                className="font-black gap-2 uppercase tracking-widest px-8"
-                onClick={() => window.location.href = '/'}
-             >
-                <Home className="size-4" /> Return to Bridge
-             </Button>
+          <div className="flex flex-col gap-4 sm:flex-row">
+            <Button variant="default" size="lg" className="gap-2 rounded-2xl px-8" onClick={() => window.location.reload()}>
+              <RefreshCw className="size-4" />
+              Refresh workspace
+            </Button>
+            <Button variant="outline" size="lg" className="gap-2 rounded-2xl px-8" onClick={() => (window.location.href = '/')}>
+              <Home className="size-4" />
+              Return home
+            </Button>
           </div>
         </div>
       );
